@@ -1,0 +1,2309 @@
+<!DOCTYPE html>
+<html lang="en" style="background:#080808">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ODEN — Observational Diagnostic Entry Network</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<style>
+  :root {
+    --bg:#080808;--panel:#0f0f0f;--surface:#161616;--border:#242424;--border2:#333333;
+    --text:#cfc5b2;--muted:#6b6355;--accent:#c8923f;--accent2:#a0722c;
+    --actor:#c8923f;--person:#e0a860;--inst:#7a9e7e;--gap:#5a8fc4;--loc:#b07e85;--event:#d4a843;--media:#c49a6c;--doc:#7ab8b0;--concept:#a87ab8;--object:#7a9e6a;--relation:#c47a8a;--financial:#a8c44a;--witness:#7aaed4;--suspect:#c46a4a;--law:#6a8ab8;--science:#7ac4b8;--family:#c4606a;--network:#4ab8a8;--period:#c4a882;--alias:#c4907a;--rumor:#b87a9a;--pattern:#6a8aaa;
+    --mono:'Courier Prime','Courier New',monospace;--serif:'Libre Baskerville',Georgia,serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;overflow:hidden;max-width:100vw;}
+  body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;display:flex;flex-direction:column;overflow:hidden;position:fixed;top:0;left:0;right:0;bottom:0;width:100%;}
+
+  /* HEADER */
+  #header{display:flex;align-items:center;gap:20px;padding:10px 20px;border-bottom:1px solid var(--border);background:var(--panel);flex-shrink:0;flex-wrap:wrap;}
+  #logo{font-family:var(--mono);font-weight:700;font-size:22px;letter-spacing:8px;color:var(--accent);white-space:nowrap;}
+  #logo span{color:var(--muted);font-size:11px;letter-spacing:2px;display:block;font-weight:400;}
+  #case-name-wrap{display:flex;align-items:center;gap:8px;flex:1;min-width:200px;}
+  #case-name-wrap label{color:var(--muted);font-size:11px;letter-spacing:1px;white-space:nowrap;}
+  #case-name{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:14px;padding:5px 10px;flex:1;outline:none;min-width:150px;}
+  #case-name:focus{border-color:var(--accent);}
+  #stats-bar{color:var(--muted);font-size:11px;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+  .stat{color:var(--accent);}
+  #backup-reminder{font-size:10px;letter-spacing:0;}
+
+  /* TABS */
+  #tabs{display:flex;border-bottom:1px solid var(--border);background:var(--panel);flex-shrink:0;overflow-x:auto;}
+  .tab-btn{padding:8px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--mono);font-size:11px;letter-spacing:2px;cursor:pointer;transition:color .2s,border-color .2s;white-space:nowrap;flex-shrink:0;}
+  .tab-btn:hover{color:var(--text);}
+  .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+  #content{flex:1;overflow:hidden;position:relative;display:flex;min-height:0;height:0;max-width:100vw;}
+  .tab-panel{display:none;flex:1;overflow:hidden;min-height:0;flex-direction:column;align-items:stretch;justify-content:flex-start;max-width:100vw;}
+  .tab-panel.active{display:flex;}
+
+  /* MAP */
+  #map-panel{position:relative;flex:1;overflow:hidden;min-height:0;}
+  #map-canvas{position:absolute;top:0;left:0;display:block;background:var(--bg);}
+  #map-instructions{position:absolute;bottom:20px;left:20px;color:var(--muted);font-size:10px;letter-spacing:1px;line-height:1.8;pointer-events:none;}
+  #legend{position:absolute;top:16px;left:16px;background:rgba(10,10,10,.88);border:1px solid var(--border);padding:12px 14px;font-size:10px;letter-spacing:1px;line-height:2;}
+  .legend-item{display:flex;align-items:center;gap:8px;}
+  .legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+  .gloss-item{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+  .gloss-item:last-child{border-bottom:none;margin-bottom:0;}
+  .gloss-item .legend-dot{margin-top:3px;}
+  .gloss-item strong{font-size:11px;color:var(--text);letter-spacing:.5px;display:block;margin-bottom:3px;}
+  .gloss-desc{font-size:10px;color:var(--muted);line-height:1.6;}
+  #node-panel{position:absolute;top:0;right:0;width:340px;height:100%;background:var(--panel);border-left:1px solid var(--border);transform:translateX(100%);transition:transform .25s ease;overflow-y:auto;padding:20px;z-index:10;}
+  #node-panel.open{transform:translateX(0);}
+  #np-close{position:absolute;top:12px;right:12px;background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-family:var(--mono);padding:2px 8px;font-size:12px;}
+  #np-close:hover{border-color:var(--accent);color:var(--accent);}
+  #node-panel h2{font-family:var(--serif);font-size:15px;color:var(--accent);line-height:1.3;margin-top:4px;margin-bottom:12px;padding-right:30px;}
+  .np-type{font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;}
+  .np-desc{font-size:12px;line-height:1.7;color:var(--text);margin-bottom:14px;}
+  .np-lbl{font-size:10px;letter-spacing:1px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;}
+  .np-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
+  .np-tag{background:var(--surface);border:1px solid var(--border);padding:2px 8px;font-size:10px;letter-spacing:1px;}
+  .np-srcs{list-style:none;}
+  .np-srcs li{margin-bottom:6px;}
+  .np-srcs a{color:var(--gap);text-decoration:none;font-size:11px;}
+  .np-srcs a:hover{color:var(--accent);}
+  .np-nosrc{color:var(--muted);font-size:11px;font-style:italic;}
+  .np-div{border:none;border-top:1px solid var(--border);margin:12px 0;}
+  .np-link-btn{display:flex;align-items:center;gap:6px;background:none;border:1px solid var(--border2);color:var(--muted);font-family:var(--mono);font-size:10px;letter-spacing:1px;padding:6px 10px;cursor:pointer;margin-bottom:6px;width:100%;text-align:left;transition:border-color .15s,color .15s;}
+  .np-link-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .np-link-btn .arr{margin-left:auto;}
+
+  /* SHARED */
+  .scroll-panel{flex:1;overflow-y:auto;padding:30px;max-width:900px;margin:0 auto;width:100%;}
+
+  /* BLUEPRINT */
+  .bp-intro{font-family:var(--serif);font-size:14px;line-height:1.8;color:var(--text);margin-bottom:30px;padding:20px;background:var(--surface);border-left:3px solid var(--accent);}
+  .bp-intro strong{color:var(--accent);}
+  .phase{border:1px solid var(--border);margin-bottom:20px;}
+  .phase-hdr{padding:14px 18px;background:var(--surface);cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;}
+  .phase-hdr:hover{background:#1a1a1a;}
+  .ph-num{color:var(--accent);font-size:10px;letter-spacing:3px;display:flex;align-items:center;gap:8px;}
+  .ph-status{width:7px;height:7px;border-radius:50%;background:var(--border2);flex-shrink:0;transition:background .3s;}
+  .ph-status.has-content{background:var(--inst);}
+  .ph-title{font-family:var(--serif);font-size:15px;color:var(--text);}
+  .ph-tog{color:var(--muted);font-size:16px;transition:transform .2s;}
+  .phase.open .ph-tog{transform:rotate(45deg);}
+  .phase-body{display:none;padding:20px;border-top:1px solid var(--border);}
+  .phase.open .phase-body{display:block;}
+  .ph-desc{font-size:12px;line-height:1.8;color:var(--muted);margin-bottom:16px;}
+  .ph-q{margin-bottom:16px;}
+  .ph-q label{display:block;font-size:11px;letter-spacing:1px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;}
+  .ph-q textarea,.ph-q input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;padding:10px;outline:none;resize:vertical;min-height:60px;line-height:1.6;}
+  .ph-q textarea:focus,.ph-q input:focus{border-color:var(--accent);}
+  .ph-q input{min-height:unset;}
+  .ph-ex{background:var(--surface);border-left:2px solid var(--border2);padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--muted);line-height:1.7;font-style:italic;}
+  .ph-ex strong{color:var(--text);font-style:normal;}
+
+  /* NODES TAB */
+  #nodes-wrap{flex:1;display:flex;overflow:hidden;}
+  .nl{width:360px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:20px;}
+  .nr{flex:1;overflow-y:auto;padding:20px;}
+  .ftitle{font-family:var(--serif);font-size:16px;color:var(--accent);margin-bottom:16px;}
+  .frow{margin-bottom:14px;}
+  .frow label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+  .frow input,.frow select,.frow textarea{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 10px;outline:none;}
+  .frow input:focus,.frow select:focus,.frow textarea:focus{border-color:var(--accent);}
+  .frow textarea{min-height:70px;resize:vertical;line-height:1.5;}
+  .frow select option{background:var(--panel);}
+  .btn{background:none;border:1px solid var(--accent);color:var(--accent);font-family:var(--mono);font-size:11px;letter-spacing:2px;padding:8px 16px;cursor:pointer;transition:background .15s,color .15s;}
+  .btn:hover{background:var(--accent);color:var(--bg);}
+  .btn-sm{padding:4px 10px;font-size:10px;letter-spacing:1px;}
+  .btn-d{border-color:#a04040;color:#a04040;}
+  .btn-d:hover{background:#a04040;color:var(--bg);}
+  .btn-m{border-color:var(--border2);color:var(--muted);}
+  .btn-m:hover{background:var(--border2);color:var(--text);}
+  .btn-i{border-color:var(--inst);color:var(--inst);}
+  .btn-i:hover{background:var(--inst);color:var(--bg);}
+  .nli{border:1px solid var(--border);padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:border-color .15s;display:flex;align-items:center;gap:8px;}
+  .nli:hover{border-color:var(--accent);}
+  .nli-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .nli-name{flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .sec-hdr{font-family:var(--serif);font-size:13px;color:var(--muted);letter-spacing:1px;margin:20px 0 10px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+  .eli{border:1px solid var(--border);padding:8px 12px;margin-bottom:6px;font-size:11px;display:flex;align-items:center;gap:8px;color:var(--muted);}
+  .eli .el-n{color:var(--text);flex:1;}
+  .ew{color:var(--accent);letter-spacing:1px;}
+
+  /* CONTEXT TAB */
+  #ctx-wrap{flex:1;display:flex;overflow:hidden;}
+  .ctx-l{width:320px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:20px;}
+  .ctx-r{flex:1;overflow-y:auto;padding:30px;}
+  .csc{border:1px solid var(--border);margin-bottom:14px;cursor:pointer;transition:border-color .15s;}
+  .csc:hover{border-color:var(--border2);}
+  .csc.act{border-color:var(--accent);}
+  .csc-hdr{padding:12px 14px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .csc-cat{font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;}
+  .csc-ttl{font-family:var(--serif);font-size:13px;color:var(--text);line-height:1.3;}
+  .csc-meta{font-size:10px;color:var(--muted);white-space:nowrap;}
+  .csc-pills{padding:0 14px 10px;display:flex;flex-wrap:wrap;gap:4px;}
+  .pill{background:var(--surface);border:1px solid var(--border);padding:2px 8px;font-size:10px;color:var(--muted);display:flex;align-items:center;gap:4px;}
+  .pill-dot{width:6px;height:6px;border-radius:50%;}
+  .ctx-empty{color:var(--muted);font-size:13px;font-style:italic;text-align:center;padding:60px 20px;font-family:var(--serif);line-height:1.8;}
+  .ctx-write h3{font-family:var(--serif);font-size:18px;color:var(--accent);margin-bottom:4px;}
+  .ctx-write .cw-cat{font-size:11px;letter-spacing:2px;color:var(--muted);margin-bottom:16px;text-transform:uppercase;}
+  .ctx-write textarea{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--serif);font-size:13px;padding:16px;outline:none;resize:vertical;min-height:300px;line-height:1.9;}
+  .ctx-write textarea:focus{border-color:var(--accent);}
+  .ctx-ln{border:1px solid var(--border);padding:8px 12px;margin-bottom:6px;display:flex;align-items:center;gap:8px;font-size:11px;}
+  .ctx-ln .cln-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .ctx-ln .cln-nm{flex:1;}
+  .ctx-ln button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;}
+  .ctx-ln button:hover{color:var(--gap);}
+
+  /* DOCUMENTS TAB */
+  #docs-wrap{flex:1;display:flex;overflow:hidden;}
+  .docs-l{width:340px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:20px;}
+  .docs-r{flex:1;overflow-y:auto;padding:20px;}
+  .doc-card{border:1px solid var(--border);margin-bottom:14px;transition:border-color .15s;}
+  .doc-card:hover{border-color:var(--border2);}
+  .doc-card-hdr{padding:14px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .doc-title{font-family:var(--serif);font-size:13px;color:var(--text);margin-bottom:4px;}
+  .doc-meta{font-size:10px;color:var(--muted);letter-spacing:1px;}
+  .doc-status{font-size:10px;padding:2px 8px;border:1px solid;}
+  .s-recv{border-color:var(--inst);color:var(--inst);}
+  .s-pend{border-color:var(--muted);color:var(--muted);}
+  .s-req{border-color:var(--event);color:var(--event);}
+  .s-deny{border-color:#a04040;color:#a04040;}
+  .doc-desc{padding:0 14px 14px;font-size:12px;line-height:1.6;color:var(--muted);}
+  .doc-view{margin:0 14px 14px;display:inline-flex;align-items:center;gap:6px;background:none;border:1px solid var(--gap);color:var(--gap);font-family:var(--mono);font-size:10px;letter-spacing:1px;padding:5px 12px;cursor:pointer;text-decoration:none;transition:background .15s,color .15s;}
+  .doc-view:hover{background:var(--gap);color:var(--bg);}
+  .filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+  .fchip{background:none;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:10px;letter-spacing:1px;padding:4px 10px;cursor:pointer;transition:border-color .15s,color .15s;}
+  .fchip:hover{border-color:var(--border2);color:var(--text);}
+  .fchip.act{border-color:var(--accent);color:var(--accent);}
+
+  /* SOURCES TAB */
+  #src-wrap{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+  .src-toolbar{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;align-items:center;flex-shrink:0;}
+  .src-list{flex:1;overflow-y:auto;padding:20px;}
+  .src-form{background:var(--surface);border:1px solid var(--border);padding:20px;margin-bottom:20px;display:none;}
+  .src-form.open{display:block;}
+  .src-item{border:1px solid var(--border);padding:14px 16px;margin-bottom:10px;display:flex;gap:14px;align-items:flex-start;}
+  .src-num{font-size:11px;color:var(--muted);width:30px;flex-shrink:0;padding-top:2px;}
+  .src-body{flex:1;}
+  .src-ttl{font-family:var(--serif);font-size:13px;color:var(--text);margin-bottom:4px;}
+  .src-url a{font-size:11px;color:var(--gap);text-decoration:none;}
+  .src-url a:hover{color:var(--accent);}
+  .src-meta{font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:4px;}
+  .src-refs{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;}
+  .src-ref{background:var(--surface);border:1px solid var(--border);padding:2px 8px;font-size:10px;color:var(--muted);display:flex;align-items:center;gap:4px;}
+  .src-ref .srd{width:6px;height:6px;border-radius:50%;}
+
+  /* SAVE */
+  .save-wrap{flex:1;overflow-y:auto;}
+  .save-sec{border:1px solid var(--border);margin-bottom:20px;padding:20px;}
+  .save-sec h3{font-family:var(--serif);font-size:15px;color:var(--accent);margin-bottom:10px;}
+  .save-sec p{font-size:12px;line-height:1.7;color:var(--muted);margin-bottom:14px;}
+  #json-out{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:12px;min-height:120px;resize:vertical;outline:none;}
+  .mbox{background:var(--surface);border:1px solid var(--border2);padding:18px;margin-bottom:20px;font-size:12px;line-height:1.8;}
+  .mbox h3{font-family:var(--serif);color:var(--accent);margin-bottom:10px;font-size:14px;}
+  .mbox p{color:var(--muted);margin-bottom:10px;}
+
+  /* IMPORT TAB */
+  #imp-wrap{position:absolute;top:0;left:0;right:0;bottom:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .imp-drop{border:2px dashed var(--border2);padding:40px 20px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;margin-bottom:20px;}
+  .imp-drop:hover,.imp-drop.drag-over{border-color:var(--accent);background:rgba(200,146,63,.05);}
+  .imp-drop-icon{font-size:32px;margin-bottom:12px;color:var(--muted);}
+  .imp-drop-title{font-family:var(--serif);font-size:15px;color:var(--text);margin-bottom:6px;}
+  .imp-drop-sub{font-size:11px;color:var(--muted);letter-spacing:1px;}
+  .imp-types{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px;}
+  .imp-type-chip{background:var(--surface);border:1px solid var(--border);padding:3px 10px;font-size:10px;letter-spacing:1px;color:var(--muted);}
+  .imp-preview{border:1px solid var(--border);padding:20px;margin-bottom:16px;display:none;}
+  .imp-preview h3{font-family:var(--serif);color:var(--accent);font-size:14px;margin-bottom:6px;}
+  .imp-preview-sub{font-size:11px;color:var(--muted);margin-bottom:14px;letter-spacing:1px;}
+  .imp-node-preview{border:1px solid var(--border);padding:8px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;font-size:11px;}
+  .imp-node-preview .ind{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .imp-node-preview .inl{flex:1;}
+  .imp-node-preview .int{font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
+  .imp-node-preview select{background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:2px 4px;outline:none;}
+  .imp-node-preview select:focus{border-color:var(--accent);}
+  .imp-paste-area{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;padding:12px;outline:none;resize:vertical;min-height:120px;line-height:1.6;margin-bottom:10px;}
+  .imp-paste-area:focus{border-color:var(--accent);}
+  .imp-status{font-size:11px;color:var(--muted);margin-bottom:12px;letter-spacing:1px;min-height:16px;}
+  .imp-status.ok{color:var(--inst);}
+  .imp-status.warn{color:#c07070;}
+
+  /* MISC */
+  ::-webkit-scrollbar{width:5px;height:5px;}
+  ::-webkit-scrollbar-track{background:var(--bg);}
+  ::-webkit-scrollbar-thumb{background:var(--border2);}
+  ::-webkit-scrollbar-thumb:hover{background:var(--muted);}
+  .ok{color:var(--inst);font-size:11px;letter-spacing:1px;}
+  .empty{color:var(--muted);font-size:12px;font-style:italic;padding:20px 0;text-align:center;}
+  .warn{color:#c07070;font-size:11px;}
+  .badge{display:inline-block;background:var(--inst);color:var(--bg);font-size:9px;padding:1px 5px;margin-left:4px;vertical-align:middle;}
+  hr.thin{border:none;border-top:1px solid var(--border);margin:16px 0;}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;}
+  #import-file{display:none;}
+  .doc-img-wrap{padding:0 14px 14px;}
+  .doc-img-wrap img{max-width:100%;max-height:300px;border:1px solid var(--border);display:block;cursor:pointer;}
+  .doc-img-wrap img:hover{border-color:var(--accent);}
+  .doc-img-label{font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:1px;}
+  .img-upload-area{border:1px dashed var(--border2);padding:14px;text-align:center;cursor:pointer;transition:border-color .15s;margin-top:6px;}
+  .img-upload-area:hover{border-color:var(--accent);}
+  .img-upload-area input{display:none;}
+  .img-preview{width:100%;max-height:120px;object-fit:contain;margin-top:8px;border:1px solid var(--border);display:none;}
+  .img-clear-btn{background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer;letter-spacing:1px;margin-top:4px;font-family:var(--mono);}
+  .img-clear-btn:hover{color:#c07070;}
+  @media (max-width: 600px) {
+    /* Header — compact for mobile */
+    #header{padding:8px 12px;gap:6px;flex-wrap:nowrap;flex-direction:column;}
+    #logo{font-size:16px;letter-spacing:5px;}
+    #logo span{display:none;}
+    #case-name-wrap{width:100%;min-width:0;}
+    #case-name{font-size:12px;padding:4px 8px;}
+    #stats-bar{font-size:10px;letter-spacing:0;width:100%;}
+
+    /* Tabs */
+    .tab-btn{padding:6px 9px;font-size:9px;letter-spacing:0;}
+
+    /* Map - hide full legend, show small button instead */
+    #legend{display:none !important;}
+    #mobile-legend-btn{display:flex !important;}
+    #node-panel{width:100%;}
+    #map-instructions{font-size:9px;bottom:8px;left:8px;}
+
+    /* Split panels → single column */
+    #docs-wrap,#ctx-wrap,#nodes-wrap{flex-direction:column;overflow-y:auto;}
+    .docs-l,.ctx-l,.nl{width:100%;border-right:none;border-bottom:1px solid var(--border);padding:12px;flex-shrink:0;}
+    .docs-r,.ctx-r,.nr{width:100%;padding:12px;flex-shrink:0;flex:0 0 auto !important;}
+
+    /* Scroll panels */
+    .scroll-panel{padding:14px;}
+    #imp-wrap{overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  }
+</style>
+</head>
+<body style="background:#080808;color:#cfc5b2;font-family:monospace">
+
+<div id="header">
+  <div id="logo">ODEN<span>OBSERVATIONAL DIAGNOSTIC ENTRY NETWORK</span></div>
+  <div id="case-name-wrap">
+    <label>CASE:</label>
+    <input id="case-name" type="text" placeholder="Name your investigation..." maxlength="80">
+  </div>
+  <div id="stats-bar">
+    NODES <span class="stat" id="sn">0</span> &nbsp;
+    EDGES <span class="stat" id="se">0</span> &nbsp;
+    SECTIONS <span class="stat" id="ss">0</span> &nbsp;
+    DOCS <span class="stat" id="sd">0</span>
+    &nbsp;&nbsp;<span id="backup-reminder" style="display:none;cursor:pointer;" onclick="sw('save')" title="Click to go to Save tab"></span>
+  </div>
+</div>
+
+<div id="tabs">
+  <button class="tab-btn" onclick="sw('guide')">? QUICK START</button>
+  <button class="tab-btn active" onclick="sw('map')">◈ MAP</button>
+  <button class="tab-btn" onclick="sw('context')">≡ CONTEXT</button>
+  <button class="tab-btn" onclick="sw('docs')">☰ DOCUMENTS</button>
+  <button class="tab-btn" onclick="sw('sources')">⊛ SOURCES</button>
+  <button class="tab-btn" onclick="sw('blueprint')">☷ BLUEPRINT</button>
+  <button class="tab-btn" onclick="sw('nodes')">⊞ NODES & EDGES</button>
+  <button class="tab-btn" onclick="sw('check')">✓ METHODOLOGY CHECK</button>
+  <button class="tab-btn" onclick="sw('save')">⇓ SAVE YOUR WORK</button>
+  <button class="tab-btn" onclick="sw('import')">⇑ IMPORT FILES</button>
+</div>
+
+<div id="content">
+
+<!-- MAP -->
+<div class="tab-panel active" id="tab-map">
+  <div id="map-panel">
+    <canvas id="map-canvas"></canvas>
+    <div id="legend">
+      <div id="legend-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;cursor:pointer;" onclick="toggleLegend()">
+        <span style="font-size:9px;letter-spacing:2px;color:var(--muted)">NODE TYPES</span>
+        <span id="legend-toggle-btn" style="font-size:9px;color:var(--accent);letter-spacing:1px;margin-left:12px">+ GUIDE</span>
+      </div>
+      <!-- COMPACT VIEW -->
+      <div id="legend-compact">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--actor)"></div> Person / Actor</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--inst)"></div> Organization</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--gap)"></div> Gap / Unknown</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--loc)"></div> Location</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--event)"></div> Event</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--media)"></div> Media</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--doc)"></div> Document / Record</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--concept)"></div> Concept / Theory</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--object)"></div> Object / Artifact</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--relation)"></div> Relationship</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--financial)"></div> Financial</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--witness)"></div> Witness / Source</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--suspect)"></div> Unknown / Suspect</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--law)"></div> Legislation / Law</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--science)"></div> Scientific Finding</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--family)"></div> Family / Lineage</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--network)"></div> Network / Group</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--period)"></div> Period / Span</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--alias)"></div> Alias / Identity</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--rumor)"></div> Rumor / Claim</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--pattern)"></div> Pattern / Behavior</div>
+      </div>
+      <!-- GLOSSARY VIEW -->
+      <div id="legend-glossary" style="display:none;max-height:70vh;overflow-y:auto;">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:10px;line-height:1.6;font-style:italic">What each node type is for — and when to use it.</div>
+        <div class="gloss-item"><div class="legend-dot" style="background:var(--actor)"></div><div><strong>Person / Actor</strong><div class="gloss-desc">Any individual who plays a role in your investigation — whether confirmed, suspected, or historically significant. Use this for real named people.</div></div></div>
+        <div class="gloss-item"><div class="legend-dot" style="background:var(--inst)"></div><div><strong>Organization</strong><div class="gloss-desc">A company, agency, institution, government body, church, or any formal group. The Smithsonian, a police department, a corporation — if it has a name and institutional structure, it's this.</div></div></div>
+        <div class="gloss-item"><div class="legend-dot" style="background:var(--gap)"></div><div><strong>Gap / Unknown ⭑</strong><div class="gloss-desc">The most important node type in this methodology. A specific record that should exist in a specific archive — but doesn't. Not "no evidence found." A named document, in a named repository, that is verifiably absent. These are your primary findings.</div></div></div>
+        <div class="gloss-item"><div class="legend-dot" style="background:var(--event)"></div><div><strong>Event ⭑</strong><div class="gloss-desc">A specific, dateable occurrence — an expedition, a death, a publication, a court hearing, a discovery. Events are anchors on the timeline. Connect them to the people, organizations, and documents that surround them.</div></div></div>
+        <div class="gloss-item"><div class="legend-dot" style="background:var(--loc)"></div><div><strong>Location</strong><div class="gloss-desc">A place that matters to the investigation — a canyon, a building, an archive, a crime scene, a country of origin. Useful for showing geographic overlap between actors.</div></div></div>
+        <div class="gloss-item"><div class="legend-dot" style="background:var(--doc)"></div><div><strong>Document / Record</strong><div class="gloss-desc">A specific physical or digital document — a letter, a permit, a census entry, a photograph, a court filing. Use this when the document itself is a node in your investigation, not just a source you're citing.</div></div></div>
+        <div class="gloss-item"><div class="legend-dot" style="background:var(--media)"></div><div><strong>Media</strong><div class="gloss-desc">A publication, newspaper, broadcast, or media outlet — or a specific article, story, or broadcast that shaped the public record. Use this when media is an actor in the story, not just a source.</div></div></div>
+        <div class="gloss-item"><div class="legend-dot" style="background:var(--witness)"></div><div><strong>Witness / Source</strong><div class="gloss-desc">Someone who saw something, reported something, or provided testimony. Different from Person/Actor — this type marks their role as an informant to the record, not just a subject of it.</div></div></div>
+        <div class="gloss-item"><div class="legend-dot" style="background:var(--suspect)"></div><div><strong>Unknown / Suspect</strong><div class="gloss-desc">An unidentified person — a John Doe, an unnamed source, a person of interest not yet confirmed. Use this to hold a place for someone you know exists but haven't identified.</div></div></div>
+        <div class="gloss-item"><div class="legend-dot" style="background:var(--relation)"></div><div><strong>Relationship / Connection</strong><div class="gloss-desc">When the link itself is what you're investigating, not just the people. A business arrangement, a secret correspondence, a known association. Use this when the relationship has its own sources and history.</div></div></div>
+        <div class="gloss-item"><div class="legend-dot" style="background:var(--financial)"></div><div><strong>Financial / Transaction</strong><div class="gloss-desc">A payment, grant, contract, inheritance, or money trail. Financial connections often explain relationships that have no other obvious reason to exist.</div></div></div>
+        <div class="gloss-item"><div class="legend-dot" style="background:var(--law)"></div><div><strong>Legislation / Law</strong><div class="gloss-desc">An act, statute, executive order, regulation, or legal ruling that shaped what was possible, permitted, or required. Laws explain why certain records exist — or couldn't.</div></div></div>
+        <div class="gloss-item"><div class="legend-dot" style="background:var(--science)"></div><div><strong>Scientific Finding</strong><div class="gloss-desc">A study, field report, archaeological finding, medical result, or academic conclusion. Use this when a piece of research is itself a node — something that confirmed, denied, or ignored something important.</div></div></div>
+        <div class="gloss-item"><div class="legend-dot" style="background:var(--family)"></div><div><strong>Family / Lineage</strong><div class="gloss-desc">A family relationship, bloodline, or genealogical connection. Useful in genealogy research, estate and inheritance cases, and any investigation where family ties explain access or motive.</div></div></div>
+        <div class="gloss-item"><div class="legend-dot" style="background:var(--network)"></div><div><strong>Network / Group</strong><div class="gloss-desc">An informal group that isn't a formal organization — a social circle, a ring, a movement, an online community, a fraternal lodge. Use this when the group has no official structure but its members act in coordination.</div></div></div>
+        <div class="gloss-item"><div class="legend-dot" style="background:var(--concept)"></div><div><strong>Concept / Theory</strong><div class="gloss-desc">An idea, belief, narrative, or framework that's a node in the investigation. A cover story, an official explanation, a conspiracy theory, a doctrine. Use this when an idea itself is something you need to connect to people and evidence.</div></div></div>
+        <div class="gloss-item"><div class="legend-dot" style="background:var(--object)"></div><div><strong>Object / Artifact</strong><div class="gloss-desc">A physical object — a weapon, a photograph, a specimen, a map, a piece of evidence. Use this when the object itself needs to be tracked through the investigation.</div></div></div>
+        <div class="gloss-item"><div class="legend-dot" style="background:var(--period)"></div><div><strong>Period / Span</strong><div class="gloss-desc">A stretch of time that acts as a container — the Reconstruction Era, the missing 18 minutes, the post-merger blackout period. Use this to group events, gaps, and actors that cluster within a specific window.</div></div></div>
+        <div class="gloss-item"><div class="legend-dot" style="background:var(--alias)"></div><div><strong>Alias / Identity</strong><div class="gloss-desc">A fake name, pseudonym, username, codename, or assumed identity. Critical in fraud, espionage, true crime, and any case where someone was operating under a different name.</div></div></div>
+        <div class="gloss-item"><div class="legend-dot" style="background:var(--rumor)"></div><div><strong>Rumor / Claim</strong><div class="gloss-desc">An unverified assertion — a tip, an allegation, an eyewitness claim, a story that's circulating without documentation. Not a gap (that's a missing record) and not a document (that's a paper trail). This is the claim itself, floating without a paper anchor.</div></div></div>
+        <div class="gloss-item"><div class="legend-dot" style="background:var(--pattern)"></div><div><strong>Pattern / Behavior</strong><div class="gloss-desc">A recurring behavior that's a finding in itself — systematic document destruction, repeated access denial, a modus operandi. Use this when you've identified something that happens more than once and the repetition is the point.</div></div></div>
+      </div>
+    </div>
+    <div id="map-instructions">DRAG to pan &nbsp;|&nbsp; SCROLL to zoom &nbsp;|&nbsp; CLICK node for details &nbsp;|&nbsp; DRAG node to reposition</div>
+    <!-- Mobile legend button -->
+    <button id="mobile-legend-btn" onclick="toggleMobileLegend()" style="display:none;position:absolute;bottom:50px;left:12px;background:rgba(10,10,10,.9);border:1px solid var(--border2);color:var(--accent);font-family:var(--mono);font-size:10px;letter-spacing:1px;padding:6px 12px;cursor:pointer;z-index:20;">⬡ TYPES</button>
+    <!-- Mobile legend overlay -->
+    <div id="mobile-legend-overlay" style="display:none;position:absolute;bottom:80px;left:8px;width:260px;max-height:55vh;background:rgba(8,8,8,.97);border:1px solid var(--border2);border-radius:4px;z-index:30;overflow-y:auto;padding:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <span style="font-size:11px;letter-spacing:2px;color:var(--accent)">NODE TYPE GUIDE</span>
+        <button onclick="toggleMobileLegend()" style="background:none;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);padding:4px 10px;font-size:11px;cursor:pointer;">✕ CLOSE</button>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:14px;line-height:1.6;font-style:italic">What each node type is for and when to use it.</div>
+      <div class="gloss-item"><div class="legend-dot" style="background:var(--actor)"></div><div><strong>Person / Actor</strong><div class="gloss-desc">Any named individual who plays a role in your investigation.</div></div></div>
+      <div class="gloss-item"><div class="legend-dot" style="background:var(--inst)"></div><div><strong>Organization</strong><div class="gloss-desc">A company, agency, government body, church, or any formal institution.</div></div></div>
+      <div class="gloss-item"><div class="legend-dot" style="background:var(--gap)"></div><div><strong>Gap / Unknown ⭑</strong><div class="gloss-desc">A specific record that should exist in a specific archive — but doesn't. Your primary methodology finding.</div></div></div>
+      <div class="gloss-item"><div class="legend-dot" style="background:var(--event)"></div><div><strong>Event ⭑</strong><div class="gloss-desc">A specific dateable occurrence. Events anchor your timeline — connect people, documents, and gaps to them.</div></div></div>
+      <div class="gloss-item"><div class="legend-dot" style="background:var(--loc)"></div><div><strong>Location</strong><div class="gloss-desc">A place that matters — a site, archive, building, crime scene, or country.</div></div></div>
+      <div class="gloss-item"><div class="legend-dot" style="background:var(--doc)"></div><div><strong>Document / Record</strong><div class="gloss-desc">A specific document that is itself a node — a letter, permit, census entry, court filing.</div></div></div>
+      <div class="gloss-item"><div class="legend-dot" style="background:var(--media)"></div><div><strong>Media</strong><div class="gloss-desc">A publication or outlet that shaped the public record. Use when media is an actor in the story.</div></div></div>
+      <div class="gloss-item"><div class="legend-dot" style="background:var(--witness)"></div><div><strong>Witness / Source</strong><div class="gloss-desc">Someone who saw or reported something. Marks their role as informant to the record.</div></div></div>
+      <div class="gloss-item"><div class="legend-dot" style="background:var(--suspect)"></div><div><strong>Unknown / Suspect</strong><div class="gloss-desc">An unidentified person — a John Doe or person of interest not yet confirmed.</div></div></div>
+      <div class="gloss-item"><div class="legend-dot" style="background:var(--relation)"></div><div><strong>Relationship / Connection</strong><div class="gloss-desc">When the link itself is what you're investigating — a deal, arrangement, or known association.</div></div></div>
+      <div class="gloss-item"><div class="legend-dot" style="background:var(--financial)"></div><div><strong>Financial / Transaction</strong><div class="gloss-desc">A payment, grant, contract, or money trail that explains relationships.</div></div></div>
+      <div class="gloss-item"><div class="legend-dot" style="background:var(--law)"></div><div><strong>Legislation / Law</strong><div class="gloss-desc">An act, statute, or ruling that shaped what was possible or required.</div></div></div>
+      <div class="gloss-item"><div class="legend-dot" style="background:var(--science)"></div><div><strong>Scientific Finding</strong><div class="gloss-desc">A study, field report, or academic conclusion that is itself a node.</div></div></div>
+      <div class="gloss-item"><div class="legend-dot" style="background:var(--family)"></div><div><strong>Family / Lineage</strong><div class="gloss-desc">A family relationship or genealogical connection that explains access or motive.</div></div></div>
+      <div class="gloss-item"><div class="legend-dot" style="background:var(--network)"></div><div><strong>Network / Group</strong><div class="gloss-desc">An informal group without official structure — a ring, circle, movement, or online community.</div></div></div>
+      <div class="gloss-item"><div class="legend-dot" style="background:var(--concept)"></div><div><strong>Concept / Theory</strong><div class="gloss-desc">An idea, narrative, or explanation that needs to be connected to people and evidence.</div></div></div>
+      <div class="gloss-item"><div class="legend-dot" style="background:var(--object)"></div><div><strong>Object / Artifact</strong><div class="gloss-desc">A physical object being tracked — a weapon, photograph, specimen, piece of evidence.</div></div></div>
+      <div class="gloss-item"><div class="legend-dot" style="background:var(--period)"></div><div><strong>Period / Span</strong><div class="gloss-desc">A stretch of time that acts as a container — a blackout window, an era, a phase.</div></div></div>
+      <div class="gloss-item"><div class="legend-dot" style="background:var(--alias)"></div><div><strong>Alias / Identity</strong><div class="gloss-desc">A fake name, pseudonym, username, or assumed identity.</div></div></div>
+      <div class="gloss-item"><div class="legend-dot" style="background:var(--rumor)"></div><div><strong>Rumor / Claim</strong><div class="gloss-desc">An unverified assertion — a tip, allegation, or story circulating without a paper anchor.</div></div></div>
+      <div class="gloss-item"><div class="legend-dot" style="background:var(--pattern)"></div><div><strong>Pattern / Behavior</strong><div class="gloss-desc">A recurring behavior that's a finding — systematic obstruction, a modus operandi.</div></div></div>
+    </div>
+    <div id="node-panel">
+      <button id="np-close" onclick="closeNP()">✕</button>
+      <div class="np-type" id="np-type"></div>
+      <h2 id="np-title"></h2>
+      <p class="np-desc" id="np-desc"></p>
+      <hr class="np-div">
+      <div id="np-ctx-link"></div>
+      <div id="np-doc-links"></div>
+      <hr class="np-div" id="np-links-div" style="display:none">
+      <div class="np-lbl">TAGS</div>
+      <div class="np-tags" id="np-tags"></div>
+      <hr class="np-div">
+      <div class="np-lbl">SOURCES</div>
+      <ul class="np-srcs" id="np-srcs"></ul>
+    </div>
+  </div>
+</div>
+
+<!-- CONTEXT -->
+<div class="tab-panel" id="tab-context">
+  <div id="ctx-wrap">
+    <div class="ctx-l">
+      <div class="ftitle">Add Section</div>
+      <div class="frow"><label>Category Label</label><input type="text" id="cs-cat" placeholder="e.g. BURDEN OF PROOF" maxlength="40"></div>
+      <div class="frow"><label>Section Heading</label><input type="text" id="cs-hdg" placeholder="e.g. The Institutional Access Problem" maxlength="100"></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="btn" onclick="addSection()">ADD SECTION</button>
+        <span class="ok" id="ctx-ok" style="display:none">Added ✓</span>
+      </div>
+      <div class="sec-hdr">Sections (<span id="sec-count">0</span>)</div>
+      <div id="sec-list"></div>
+    </div>
+    <div class="ctx-r">
+      <div class="ctx-empty" id="ctx-empty">
+        <div style="font-size:28px;margin-bottom:16px;opacity:.3">≡</div>
+        <div style="font-family:var(--serif);font-size:15px;color:var(--text);margin-bottom:12px">Your writing goes here</div>
+        <div style="font-size:12px;margin-bottom:20px">Create a section using the form on the left,<br>then <strong style="color:var(--accent)">click its title</strong> to open the writing area.</div>
+        <div style="background:var(--surface);border:1px solid var(--border);padding:14px 18px;font-size:11px;color:var(--muted);line-height:1.8;text-align:left;max-width:340px;margin:0 auto">
+          <div style="color:var(--text);margin-bottom:6px;letter-spacing:1px;font-size:10px">WHAT GOES IN A SECTION?</div>
+          Each section is a chapter of your argument — the written explanation behind the graph. The graph is your evidence. This is your interpretation.<br><br>
+          Once you write a section, you link nodes from the map to it. Readers can then jump directly from any node to the section that explains it.
+        </div>
+      </div>
+      <div class="ctx-write" id="ctx-write" style="display:none">
+        <div class="cw-cat" id="cw-cat"></div>
+        <h3 id="cw-hdg"></h3>
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-m" onclick="editSection()">EDIT TITLE</button>
+          <button class="btn btn-sm btn-d" onclick="deleteSection()">DELETE</button>
+        </div>
+        <textarea id="ctx-body" placeholder="Write your section content here. This is where the structural argument lives — the graph is the evidence, this is the interpretation.&#10;&#10;Each section should have:&#10;• A clear claim in the opening line&#10;• Primary source grounding&#10;• An honest accounting of what can and cannot be concluded" oninput="saveBody()"></textarea>
+        <div style="margin-top:24px">
+          <div class="sec-hdr">Linked Nodes (<span id="ctx-link-count">0</span>)</div>
+          <div style="margin-bottom:10px;font-size:11px;color:var(--muted)">Link graph nodes to this section. Readers can jump from any linked node directly here using the → button in the node panel.</div>
+          <div class="frow"><select id="ctx-node-sel"><option value="">— link a node to this section —</option></select></div>
+          <button class="btn btn-sm btn-i" onclick="linkNode()" style="margin-bottom:14px">+ LINK NODE</button>
+          <div id="ctx-ln-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DOCUMENTS -->
+<div class="tab-panel" id="tab-docs">
+  <div id="docs-wrap">
+    <div class="docs-l">
+      <div class="ftitle" id="doc-form-title">Add Document</div>
+      <div class="frow"><label>Title</label><input type="text" id="doc-title" placeholder="e.g. Trevor Kincaid USDA Travel Voucher Apr 1909"></div>
+      <div class="frow"><label>Category</label>
+        <select id="doc-cat">
+          <option>Travel Records</option><option>Correspondence</option><option>Field Notes</option>
+          <option>Administrative</option><option>Press</option><option>Legal</option>
+          <option>Scientific</option><option>Financial</option><option>Other</option>
+        </select>
+      </div>
+      <div class="frow"><label>Status</label>
+        <select id="doc-stat">
+          <option value="received">Received / In Hand</option>
+          <option value="requested">Formally Requested</option>
+          <option value="pending">Pending / Locating</option>
+          <option value="denied">Access Denied</option>
+        </select>
+      </div>
+      <div class="frow"><label>Institution / Archive</label><input type="text" id="doc-inst" placeholder="e.g. NARA College Park, RG 7"></div>
+      <div class="frow"><label>Date / Date Range</label><input type="text" id="doc-date" placeholder="e.g. April 7, 1909"></div>
+      <div class="frow"><label>URL or File Link (optional)</label><input type="text" id="doc-url" placeholder="https://...">
+        <div style="font-size:10px;color:var(--muted);margin-top:5px;line-height:1.6">
+          <span style="color:var(--inst)">✓ Works:</span> Google Docs, Notion, any public Drive/Dropbox link, archive.org, NARA, Smithsonian Archives, any webpage URL<br>
+          <span style="color:#c07070">✗ Won't work:</span> Files on your desktop, private/login-required links, Word docs not uploaded anywhere
+        </div>
+      </div>
+      <div class="frow"><label>Description / Notes</label><textarea id="doc-desc" placeholder="What does this document show? Why does it matter?"></textarea></div>
+      <div class="frow">
+        <label>Attach an Image <span style="color:var(--muted)">(optional)</span></label>
+        <div class="img-upload-area" onclick="document.getElementById('doc-img-input').click()">
+          <input type="file" id="doc-img-input" accept="image/*" onchange="previewDocImage(event)">
+          <div id="doc-img-prompt" style="font-size:11px;color:var(--muted);letter-spacing:1px">&#8593; CLICK TO ATTACH IMAGE</div>
+          <img id="doc-img-preview" class="img-preview">
+        </div>
+        <button class="img-clear-btn" id="doc-img-clear" onclick="clearDocImage()" style="display:none">&#10005; REMOVE IMAGE</button>
+        <div style="font-size:10px;color:var(--muted);margin-top:5px;line-height:1.6">Scans, photos, screenshots. Saves inside your .oden file.</div>
+      </div>
+      <div class="frow">
+        <label>Link to Nodes (Ctrl/Cmd for multiple)</label>
+        <select id="doc-node-sel" multiple style="min-height:80px"></select>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="addDoc()">SAVE DOCUMENT</button>
+        <button class="btn btn-m" onclick="clearDocForm()">CLEAR</button>
+      </div>
+      <span class="ok" id="doc-ok" style="display:none;margin-top:6px;display:block">Saved ✓</span>
+    </div>
+    <div class="docs-r">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div class="filter-bar" id="doc-filter-bar" style="margin-bottom:0"><button class="fchip act" onclick="filterDocs('all',this)">ALL</button></div><button onclick="var e=document.getElementById('doc-col');var b=this;if(e.style.display==='none'){e.style.display='block';b.textContent='\u25bc HIDE';}else{e.style.display='none';b.textContent='\u25b2 SHOW';}" style="background:none;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:10px;padding:3px 8px;cursor:pointer;letter-spacing:1px">&#9660; HIDE</button></div><div id="doc-col"><div id="doc-list"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SOURCES -->
+<div class="tab-panel" id="tab-sources">
+  <div id="src-wrap">
+    <div class="src-toolbar">
+      <button class="btn" onclick="toggleSrcForm()">+ ADD SOURCE</button>
+      <button class="btn btn-m" onclick="pullSources()">⟳ PULL FROM NODES</button>
+      <span style="color:var(--muted);font-size:11px;margin-left:8px">The primary record. Every claim traces to a document.</span>
+    </div>
+    <div class="src-form" id="src-form">
+      <div class="ftitle" style="font-size:14px;margin-bottom:14px">Add Primary Source</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="frow"><label>Source Title / Description</label><input type="text" id="src-title" placeholder="e.g. Trevor Kincaid Papers, UW Special Collections"></div>
+        <div class="frow"><label>Institution / Archive</label><input type="text" id="src-inst" placeholder="e.g. University of Washington"></div>
+        <div class="frow"><label>Date or Date Range</label><input type="text" id="src-date" placeholder="e.g. 1908–1909"></div>
+        <div class="frow"><label>Record Group / Accession #</label><input type="text" id="src-rg" placeholder="e.g. Accession 1560-008 | RG 7"></div>
+        <div class="frow" style="grid-column:1/-1"><label>URL (if available)</label><input type="text" id="src-url" placeholder="https://..."></div>
+        <div class="frow" style="grid-column:1/-1"><label>Notes</label><textarea id="src-notes" style="min-height:50px" placeholder="What does this source establish? Status of access."></textarea></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn" onclick="addSrc()">ADD SOURCE</button>
+        <button class="btn btn-m" onclick="toggleSrcForm()">CANCEL</button>
+      </div>
+    </div>
+    <div class="src-list" id="src-list"></div>
+  </div>
+</div>
+
+<!-- BLUEPRINT -->
+<div class="tab-panel" id="tab-blueprint">
+  <div class="scroll-panel">
+    <div class="bp-intro"><strong>The Unverifiable Online Methodology — Blueprint</strong><br><br>This is your research roadmap. Work through each phase in order — each one builds on the last. You don't need to complete everything at once. Come back and fill things in as your research develops.<br><br>The goal isn't to prove something happened. It's to document what the record <em>can and cannot</em> tell you — and why. That's a conclusion you can actually defend.<br><br>Original methodology by <strong>unverifiableonline.com</strong> — 2026.</div>
+
+    <div class="phase" id="ph1"><div class="phase-hdr" onclick="tph('ph1')"><div><div class="ph-num">PHASE 01 <span class="ph-status" id="ph-status-1"></span></div><div class="ph-title">Who Was There? <span style="color:var(--muted);font-size:12px;font-family:var(--mono);font-weight:400;letter-spacing:1px">Map the power landscape</span></div></div><div class="ph-tog">+</div></div>
+      <div class="phase-body">
+        <p class="ph-desc">Before you touch a single archive, figure out who controlled the space around your event. This isn't about guilt — it's about understanding who had the power to create records, control access, shape the narrative, or make things disappear. These people and organizations become your first nodes on the map.<br><br><strong>Think about:</strong> Who owned the land? Who ran the press? Who credentialed the science? Who held political power? Who had money at stake?</p>
+        <div class="ph-q"><label>What event, claim, or question are you investigating?</label><input type="text" id="bp-event" placeholder="e.g. 1909 Grand Canyon cave story / disappearance of Jane Doe / my grandfather's immigration records"></div>
+        <div class="ph-q"><label>When and where did it happen?</label><input type="text" id="bp-period" placeholder="e.g. 1906–1922, Arizona Territory / June 1987, rural Ohio / early 1900s, Eastern Europe"></div>
+        <div class="ph-ex"><strong>Grand Canyon example:</strong> Santa Fe Railway (controlled physical access to the South Rim), Ralph Cameron (controlled trail access via mining claims), Fred Harvey (ran lodging — had guest records), Smithsonian Institution (would have credentialed a legitimate discovery), William Randolph Hearst (owned the newspaper that ran the story).<br><br><strong>True crime example:</strong> Local police dept (controlled the investigation), county coroner (controlled cause of death finding), DA's office (controlled what got prosecuted), local newspaper (controlled public narrative).<br><br><strong>Genealogy example:</strong> Parish church (controlled birth/death/marriage records), local government (controlled land and probate records), immigration authority (controlled entry documentation).</div>
+        <div class="ph-q"><label>Who controlled physical access to the place or people involved?</label><textarea id="bp-physical" placeholder="Who owned the land, building, or location? Who controlled entry? Who could have restricted access to the scene, the records, or the people?"></textarea></div>
+        <div class="ph-q"><label>Who controlled the public narrative or information flow?</label><textarea id="bp-press" placeholder="Who reported on this? Who had the power to shape what the public knew — or didn't know? Media, official spokespeople, institutions with PR interests."></textarea></div>
+        <div class="ph-q"><label>Who had the authority to officially verify or deny the claim?</label><textarea id="bp-science" placeholder="Who would have had to sign off on this for it to be 'official'? Coroners, scientists, government agencies, licensing bodies, academic institutions, courts."></textarea></div>
+        <div class="ph-q"><label>Who held legal, political, or institutional power over this situation?</label><textarea id="bp-political" placeholder="Government agencies, officials, courts, employers, churches, or other authorities with jurisdiction or oversight over the people or events involved."></textarea></div>
+        <div class="ph-q"><label>Who had something to gain or lose from how this was documented?</label><textarea id="bp-financial" placeholder="Financial interests, reputational stakes, legal liability, political consequences. Who benefited from a particular version of events — or from no version at all?"></textarea></div>
+      </div>
+    </div>
+
+    <div class="phase" id="ph2"><div class="phase-hdr" onclick="tph('ph2')"><div><div class="ph-num">PHASE 02 <span class="ph-status" id="ph-status-2"></span></div><div class="ph-title">What Records Should Exist? <span style="color:var(--muted);font-size:12px;font-family:var(--mono);font-weight:400;letter-spacing:1px">Build your evidence checklist</span></div></div><div class="ph-tog">+</div></div>
+      <div class="phase-body">
+        <p class="ph-desc">If this event really happened, what paperwork would it have generated? This isn't a wishlist — it's a deduction. Organizations in any era follow routines: people file travel vouchers, scientists keep field logs, agencies record permits. Work out what <em>should</em> exist based on how things actually worked at the time.<br><br>Be specific: what type of record, who would have created it, and where it would be held today. These become your Gap nodes if the records turn out to be missing.</p>
+        <div class="ph-ex"><strong>Historical/archival:</strong> Travel vouchers (NARA RG 7 — every government employee filed these). Expedition field logs (Smithsonian Archives). Antiquities Act permits (Dept. of Interior). Freight manifests for 700 glass plates.<br><br><strong>True crime:</strong> Police incident report. Autopsy or coroner's report. 911 call log. Witness statements. Toxicology results. Chain of custody records for physical evidence.<br><br><strong>Genealogy:</strong> Birth certificate (county vital records). Church baptism register. Census entry. Immigration manifest. Naturalization papers. Probate filing.</div>
+        <div class="ph-q"><label>What records should exist if the event happened — or if the person/thing existed?</label><textarea id="bp-records" placeholder="Record Type | Who Would Have Created It | Where It Should Be Today&#10;Police incident report | City PD | City/county records archive&#10;Birth certificate | County vital records | State archives&#10;Travel voucher | USDA Bureau of Entomology | NARA RG 7&#10;..."></textarea></div>
+        <div class="ph-q"><label>Do similar records exist for nearby dates, similar cases, or the same people at other times?</label><textarea id="bp-adjacent" placeholder="If records exist before and after — but not during the window that matters — that pattern is significant. Note any examples here.&#10;&#10;e.g. Police reports from this precinct exist for every month of 1987 except June and July. / Census records show this family in 1900 and 1910 but not 1905. / Guest registers survive for every year except the one in question."></textarea></div>
+      </div>
+    </div>
+
+    <div class="phase" id="ph3"><div class="phase-hdr" onclick="tph('ph3')"><div><div class="ph-num">PHASE 03 <span class="ph-status" id="ph-status-3"></span></div><div class="ph-title">Go Ask For Them <span style="color:var(--muted);font-size:12px;font-family:var(--mono);font-weight:400;letter-spacing:1px">File requests, track responses</span></div></div><div class="ph-tog">+</div></div>
+      <div class="phase-body">
+        <p class="ph-desc">Now actually go to the archives and ask for the records you identified in Phase 2. File formal requests at every repository on your list. This is where the research gets real.<br><br>Log every request you file — the date, where you asked, what you asked for, and what happened. A pattern of non-responses, referrals, or "not found" results is itself evidence. Track it carefully.<br><br><strong>Tip:</strong> Use the Documents tab to store anything you actually receive. Come back here to log the request trail.</p>
+        <div class="ph-ex"><strong>Historical/archival:</strong> NARA College Park — USDA RG 7, Kincaid travel vouchers 1908–1909 (result: no vouchers found). Smithsonian Archives — BAE expedition records 1909 (result: no Grand Canyon expedition on record).<br><br><strong>True crime:</strong> City PD records division — incident reports June–July 1987 (result: two reports found, one missing). County coroner — full autopsy file case #87-441 (result: toxicology pages not included, referred to state lab).<br><br><strong>Genealogy:</strong> County vital records — birth certificate for Thomas Kowalski, approx. 1902 (result: no record found). Ellis Island database — immigration manifest search (result: three possible matches, none confirmed).</div>
+        <div class="ph-q"><label>Archive request log</label><textarea id="bp-requests" placeholder="Date | Institution | What You Requested | Result&#10;2026-01-15 | NARA College Park | USDA RG 7, Kincaid vouchers 1908-09 | No records found&#10;2026-01-22 | Smithsonian Archives | BAE expedition files 1909 | Referred to NMNH&#10;..."></textarea></div>
+        <div class="ph-q"><label>Patterns you're noticing in the responses</label><textarea id="bp-patterns" placeholder="Are certain types of records consistently missing? Are you being referred in circles? Is the silence concentrated in a specific time window? Note it here."></textarea></div>
+      </div>
+    </div>
+
+    <div class="phase" id="ph4"><div class="phase-hdr" onclick="tph('ph4')"><div><div class="ph-num">PHASE 04 <span class="ph-status" id="ph-status-4"></span></div><div class="ph-title">Build the Map <span style="color:var(--muted);font-size:12px;font-family:var(--mono);font-weight:400;letter-spacing:1px">Connect what you've found</span></div></div><div class="ph-tog">+</div></div>
+      <div class="phase-body">
+        <p class="ph-desc">Now use the Nodes & Edges tab to build your visual map. Add everything you've identified in Phases 1–3 as nodes, then draw the connections between them.<br><br><strong>Gap nodes are especially important here.</strong> A gap node isn't "no evidence was found" — that's too vague. It's a specific record that should exist, in a specific archive, that is specifically missing. The more precise, the stronger the finding.<br><br>Look for convergence: which people or organizations show up across multiple independent threads? That clustering is the core of the closed system finding.</p>
+        <div class="ph-ex"><strong>Good gap node (historical):</strong> "El Tovar 1908 Guest Register — registers survive for 1905–1907 and 1909–1912. The 1908 volume is the only one missing, in the exact year the story was published."<br><br><strong>Good gap node (true crime):</strong> "Toxicology Report — autopsy file #87-441 contains all pages except the tox screen. The coroner's index lists it as completed. The pages are gone."<br><br><strong>Good gap node (genealogy):</strong> "1905 Iowa State Census — every household on this street is listed except the Kowalski family, who appear in 1900 and 1910."<br><br><strong>Weak gap node (any domain):</strong> "No evidence was found." Too vague — it doesn't connect to a specific record in a specific place.</div>
+        <div class="ph-q"><label>Notes on your map — which nodes have the most connections?</label><textarea id="bp-graph-notes" placeholder="Which people or organizations appear across the most independent threads? Where do multiple different types of evidence point to the same entity?"></textarea></div>
+        <div class="ph-q"><label>Do you see a closed system emerging? Describe it.</label><textarea id="bp-closed" placeholder="A closed system is when multiple independent actors — without necessarily coordinating — collectively made neutral independent documentation structurally impossible. If you see this pattern, describe it here."></textarea></div>
+      </div>
+    </div>
+
+    <div class="phase" id="ph5"><div class="phase-hdr" onclick="tph('ph5')"><div><div class="ph-num">PHASE 05 <span class="ph-status" id="ph-status-5"></span></div><div class="ph-title">Test Your Method <span style="color:var(--muted);font-size:12px;font-family:var(--mono);font-weight:400;letter-spacing:1px">Make sure it's not finding ghosts everywhere</span></div></div><div class="ph-tog">+</div></div>
+      <div class="phase-body">
+        <p class="ph-desc">Before you accept your findings, run the same framework on a case you already know the answer to. Pick something similar — same era, same type of event — but where the outcome is well-documented.<br><br>If your methodology finds the same "closed system" pattern in the control case too, the framework has a flaw. That means you need to fix how you're looking, not declare victory. This step is what separates research from confirmation bias.</p>
+        <div class="ph-ex"><strong>Historical example:</strong> Applied the same framework to the Bermuda Triangle — same structure of claimed disappearances and missing evidence. Result: records exist, investigations documented, explanations on file. The methodology found nothing anomalous. Good.<br><br><strong>True crime example:</strong> Applied the same framework to a solved murder case from the same precinct, same era. Result: all the records that should exist do exist — incident report, full autopsy, tox screen, chain of custody. No structural gaps. The framework didn't find a closed system there, which means finding one in your case is meaningful.<br><br><strong>Genealogy example:</strong> Applied the same search to a neighbor family from the same village, same period. Found census entries, church records, immigration documents — the full paper trail. Their records exist. The absence in your family's case stands out.</div>
+        <div class="ph-q"><label>What control case are you testing against?</label><input type="text" id="bp-control" placeholder="A similar case, same era or domain, where you already know the outcome — or where records should clearly exist"></div>
+        <div class="ph-q"><label>What happened when you applied the framework to the control?</label><textarea id="bp-control-result" placeholder="Did the methodology find structural gaps in the control — or did it collapse? Describe what you found."></textarea></div>
+      </div>
+    </div>
+
+    <div class="phase" id="ph6"><div class="phase-hdr" onclick="tph('ph6')"><div><div class="ph-num">PHASE 06 <span class="ph-status" id="ph-status-6"></span></div><div class="ph-title">State What You Actually Found <span style="color:var(--muted);font-size:12px;font-family:var(--mono);font-weight:400;letter-spacing:1px">Honest accounting of the record</span></div></div><div class="ph-tog">+</div></div>
+      <div class="phase-body">
+        <p class="ph-desc">This is your conclusion — but it's not "here's what happened." It's "here is what the documentary record can tell us, here is what it cannot tell us, and here is why that gap exists."<br><br>Be honest about the limits. A finding that says "the record cannot confirm or deny this" is a real finding. It's more defensible than overclaiming, and it's what the methodology is built to produce.</p>
+        <div class="ph-q"><label>What do your primary sources directly confirm?</label><textarea id="bp-confirms" placeholder="State only what documents actually show. Every claim here needs a source you can point to.&#10;&#10;e.g. The travel credential confirms Kincaid was employed by USDA in April 1909. / The incident report confirms police were called. / The 1900 census confirms the family was in this county."></textarea></div>
+        <div class="ph-q"><label>What does the pattern of missing records show?</label><textarea id="bp-absences" placeholder="What do the absences tell you — structurally? Why does the gap exist?&#10;&#10;e.g. Three independent record systems that should have captured this event all have the same gap in the same window. / The missing pages are only missing from this case file. / Records exist for everyone except this person."></textarea></div>
+        <div class="ph-q"><label>What genuinely remains open?</label><textarea id="bp-open" placeholder="What can't you answer yet — and why not? Be honest.&#10;&#10;e.g. Whether the absence is intentional or administrative. / The identity of the second person mentioned. / Whether the record was destroyed or never created."></textarea></div>
+        <div class="ph-q"><label>What would change your conclusion?</label><textarea id="bp-falsify" placeholder="What evidence, if it turned up, would falsify your finding? State this explicitly.&#10;&#10;e.g. A travel voucher showing Kincaid was elsewhere in April 1909. / The missing tox report pages showing a different cause of death. / A census record showing the family left before the gap period."></textarea></div>
+      </div>
+    </div>
+    <div style="height:40px"></div>
+  </div>
+</div>
+
+<!-- NODES & EDGES -->
+<div class="tab-panel" id="tab-nodes">
+  <div id="nodes-wrap">
+    <div class="nl">
+      <div class="ftitle" id="nform-title">Add Node</div>
+      <div class="frow"><label>Label</label><input type="text" id="n-label" placeholder="Node display name" maxlength="60"></div>
+      <div class="frow"><label>Type</label>
+        <select id="n-type">
+          <option value="actor">Person / Actor</option>
+          <option value="institution">Organization</option>
+          <option value="gap">Gap / Unknown</option>
+          <option value="location">Location</option>
+          <option value="event">Event</option>
+          <option value="media">Media</option>
+          <option value="document">Document / Record</option>
+          <option value="concept">Concept / Theory</option>
+          <option value="object">Object / Artifact</option>
+          <option value="relation">Relationship / Connection</option>
+          <option value="financial">Financial / Transaction</option>
+          <option value="witness">Witness / Source</option>
+          <option value="suspect">Unknown / Suspect</option>
+          <option value="law">Legislation / Law</option>
+          <option value="science">Scientific Finding</option>
+          <option value="family">Family / Lineage</option>
+          <option value="network">Network / Group</option>
+          <option value="period">Period / Span</option>
+          <option value="alias">Alias / Identity</option>
+          <option value="rumor">Rumor / Claim</option>
+          <option value="pattern">Pattern / Behavior</option>
+        </select>
+      </div>
+      <div class="frow"><label>Description</label><textarea id="n-desc" placeholder="What is this entity and why does it matter? Primary sources only."></textarea></div>
+      <div class="frow"><label>Tags (comma-separated)</label><input type="text" id="n-tags" placeholder="Federal agency, 1909, Access control"></div>
+      <div class="frow"><label>Sources (one per line: Label | URL)</label><textarea id="n-sources" placeholder="NARA Finding Aid | https://archives.gov/..."></textarea></div>
+      <div class="frow" style="display:flex;align-items:center;gap:10px;flex-direction:row">
+        <input type="checkbox" id="n-placeholder" style="accent-color:var(--accent);width:14px;height:14px;flex-shrink:0;">
+        <div>
+          <label style="display:inline;text-transform:none;font-size:12px;letter-spacing:0;color:var(--text)">Mark as <strong style="color:var(--accent)">placeholder</strong></label>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">A hunch, lead, or reference you haven't verified yet. Shown with a dotted outline. Excluded from Methodology Check warnings.</div>
+        </div>
+      </div>
+      <div class="frow"><label>Link to Context Section <span style="color:var(--muted)">(optional)</span></label>
+        <select id="n-section"><option value="">— no context section linked —</option></select>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="addNode()">ADD NODE</button>
+        <button class="btn btn-m" onclick="clearNF()">CLEAR</button>
+      </div>
+      <span class="ok" id="n-ok" style="display:none;margin-top:6px;display:block">Node added ✓</span>
+      <div class="sec-hdr">Nodes (<span id="n-count">0</span>)</div>
+      <div id="n-list"></div>
+    </div>
+    <div class="nr">
+      <div class="ftitle">Add Connection</div>
+      <div class="frow"><label>From Node</label><select id="e-from"><option value="">— select —</option></select></div>
+      <div class="frow"><label>To Node</label><select id="e-to"><option value="">— select —</option></select></div>
+      <div class="frow"><label>Connection Type</label>
+        <select id="e-type">
+          <option value="access">Access control</option><option value="financial">Financial relationship</option>
+          <option value="personnel">Personnel overlap</option><option value="record">Record relationship</option>
+          <option value="jurisdiction">Jurisdictional</option><option value="geographic">Geographic proximity</option>
+          <option value="media">Media relationship</option><option value="scientific">Scientific relationship</option>
+          <option value="political">Political relationship</option><option value="correspondence">Documented correspondence</option>
+          <option value="gap">Gap connection</option><option value="other">Other</option>
+        </select>
+      </div>
+      <div class="frow"><label>Connection Label</label><input type="text" id="e-label" placeholder="e.g. Controlled South Rim trail access 1890s–1920"></div>
+      <div class="frow"><label>Weight 1–3</label>
+        <select id="e-weight">
+          <option value="1">1 — Weak / circumstantial</option>
+          <option value="2" selected>2 — Documented</option>
+          <option value="3">3 — Strongly documented</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="addEdge()">ADD CONNECTION</button>
+        <button class="btn btn-m" onclick="clearEF()">CLEAR</button>
+      </div>
+      <span class="ok" id="e-ok" style="display:none;margin-top:6px;display:block">Connection added ✓</span>
+      <div class="sec-hdr">Connections (<span id="e-count">0</span>)</div>
+      <div id="e-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- METHODOLOGY CHECK -->
+<div class="tab-panel" id="tab-check">
+  <div class="scroll-panel">
+    <div class="mbox">
+      <h3>Methodology Self-Check</h3>
+      <p>This diagnostic checks your investigation against the rules of the Unverifiable Online methodology. It doesn't grade you — it flags things worth looking at. Green means the check passed. Yellow means something needs attention before your research is solid.</p>
+      <p>The methodology is self-validating, which means it can fail its own test. This check applies that same principle to your work.</p>
+    </div>
+    <div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn" onclick="runCheck()">▶ RUN CHECK</button>
+      <span style="color:var(--muted);font-size:11px;align-self:center">Run this anytime. Results update each time you click.</span>
+    </div>
+    <div id="check-results"><div class="empty" style="padding:30px 0">Click "Run Check" to analyze your investigation against the methodology.</div></div>
+  </div>
+</div>
+
+<!-- SAVE YOUR WORK -->
+<div class="tab-panel" id="tab-save">
+  <div class="scroll-panel save-wrap">
+    <div class="mbox">
+      <h3>About This Tool</h3>
+      <p>ODEN is a standalone research tool. Everything you enter lives on your own computer — no internet required after the first load, no account, no server, no published website needed. It is entirely private until you choose to share it.</p>
+      <p>Your work saves automatically to this browser as you type. Use the download button below to keep a backup file you can open on any computer.</p>
+      <p style="color:var(--accent)">Original methodology by unverifiableonline.com — 2026.</p>
+    </div>
+    <div class="save-sec">
+      <h3>Save Your Work</h3>
+      <p>Downloads a <strong style="color:var(--text)">.oden file</strong> — a backup of your entire investigation. This includes every node, connection, written section, document, source, and blueprint answer. Open it again anytime using the "Open a saved investigation" button below.</p>
+      <div class="btn-row">
+        <button class="btn" onclick="exportODEN()">⇓ SAVE YOUR INVESTIGATION</button>
+      </div>
+    </div>
+    <div class="save-sec">
+      <h3>Open a Saved Investigation</h3>
+      <p>Pick a <strong style="color:var(--text)">.oden file</strong> you saved before. Everything will be restored exactly as you left it — all your nodes, connections, written sections, and documents. This replaces whatever is currently open.</p>
+      <div class="btn-row">
+        <button class="btn" onclick="document.getElementById('import-file').click()">⇑ OPEN SAVED INVESTIGATION</button>
+        <input type="file" id="import-file" accept=".oden,.json" onchange="importODEN(event)">
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--muted)">Note: if someone sends you a .oden file, open it here — don't try to open it in Word or Notepad, it won't make sense there. This tool is the only thing that reads it correctly.</div>
+      <span class="ok" id="import-ok" style="display:none;margin-top:10px;display:block">Investigation loaded — everything has been restored ✓</span>
+    </div>
+    <div class="save-sec">
+      <h3>Your work saves automatically</h3>
+      <p>As long as you're using the same browser on the same computer, your work is saved automatically in the background every time you make a change. You don't need to do anything.</p>
+      <p class="warn">⚠ One important thing: if you clear your browser's cache or history, that automatic save gets wiped. Use the "Save Your Investigation" button above regularly so you always have a backup file.</p>
+      <button class="btn btn-m" onclick="save(true)">SAVE TO BROWSER NOW</button>
+      <span class="ok" id="save-ok" style="margin-left:10px;display:none"></span>
+    </div>
+    <div class="save-sec">
+      <h3>Start Over</h3>
+      <p>Deletes everything — all nodes, sections, documents, and blueprint answers. Make sure you've saved your work first.</p>
+      <button class="btn btn-d" onclick="confirmClear()">✕ DELETE EVERYTHING AND START OVER</button>
+    </div>
+  </div>
+</div>
+
+<!-- QUICK START GUIDE -->
+<div class="tab-panel" id="tab-guide" style="position:relative;">
+  <div class="scroll-panel" style="max-width:760px;">
+
+    <div class="bp-intro" style="border-left-color:var(--accent);margin-bottom:32px;">
+      <strong style="font-size:16px;">Welcome to ODEN</strong><br><br>
+      ODEN is a standalone research tool for investigating what the historical, institutional, or archival record can and cannot tell you about a question. It runs entirely in your browser — no account, no server, no internet required after the first load. Everything you enter stays on your computer until you choose to share it.<br><br>
+      The goal isn't to prove a story. It's to find out whether the system that dismissed it ever had the records to back that claim.
+    </div>
+
+    <div style="font-family:var(--serif);font-size:15px;color:var(--accent);margin-bottom:20px;">Your First 15 Minutes</div>
+    <p style="font-size:12px;line-height:1.8;color:var(--muted);margin-bottom:24px;">This walkthrough will take you through each part of the tool using a simple example: imagine you're investigating why your grandfather's immigration records from the early 1900s seem to be missing. You've checked the obvious places and come up empty. Now you want to understand <em>why</em> the record has gaps.</p>
+
+    <!-- STEP 1 -->
+    <div class="phase" style="margin-bottom:16px;">
+      <div class="phase-hdr" onclick="this.parentElement.classList.toggle('open')">
+        <div><div class="ph-num">STEP 01</div><div class="ph-title">Name Your Case</div></div>
+        <div class="ph-tog">+</div>
+      </div>
+      <div class="phase-body">
+        <p class="ph-desc">At the top of the screen you'll see a <strong style="color:var(--text)">CASE</strong> field. Type a name for your investigation — something short that identifies it. This gets saved with your work.</p>
+        <div class="ph-ex"><strong>Example:</strong> "Grandfather's Missing Immigration Records — 1903-1910"</div>
+        <p class="ph-desc">Then click the <strong style="color:var(--accent)">BLUEPRINT</strong> tab to start thinking through your case.</p>
+      </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="phase" style="margin-bottom:16px;">
+      <div class="phase-hdr" onclick="this.parentElement.classList.toggle('open')">
+        <div><div class="ph-num">STEP 02</div><div class="ph-title">Work the Blueprint</div></div>
+        <div class="ph-tog">+</div>
+      </div>
+      <div class="phase-body">
+        <p class="ph-desc">The <strong style="color:var(--text)">BLUEPRINT</strong> tab is your research roadmap. It walks you through a series of phases — each one asks questions that help you think about your case structurally. You don't need to answer everything at once. Come back as your research develops.</p>
+        <p class="ph-desc">Start with <strong style="color:var(--text)">Phase 1: Who Was There?</strong> — this is about mapping who had the power to create, control, or lose records related to your question.</p>
+        <div class="ph-ex"><strong>Example:</strong> For immigration records, you'd think about: Which port of entry? What shipping line? What government agency processed arrivals? Was there a church or ethnic community organization that kept parallel records? Who had the power to document — or fail to document — your grandfather's arrival?</div>
+      </div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="phase" style="margin-bottom:16px;">
+      <div class="phase-hdr" onclick="this.parentElement.classList.toggle('open')">
+        <div><div class="ph-num">STEP 03</div><div class="ph-title">Add Your First Nodes</div></div>
+        <div class="ph-tog">+</div>
+      </div>
+      <div class="phase-body">
+        <p class="ph-desc">Go to the <strong style="color:var(--text)">NODES &amp; EDGES</strong> tab. Nodes are the building blocks of your investigation — people, organizations, locations, documents, events, and evidence gaps. Each one gets a colored dot on the map.</p>
+        <p class="ph-desc">Start by adding the key players from your Blueprint thinking. Give each node a <strong style="color:var(--text)">name</strong>, pick a <strong style="color:var(--text)">type</strong> (the color categories you see on the map), and write a short description.</p>
+        <div class="ph-ex"><strong>Example nodes for our case:</strong><br>
+        <span style="color:var(--actor)">●</span> <strong>Grandfather (Person)</strong> — "Arrived at Ellis Island between 1903-1910, exact date unknown"<br>
+        <span style="color:var(--inst)">●</span> <strong>Ellis Island Processing Center (Organization)</strong> — "Federal immigration station, operated 1892-1954"<br>
+        <span style="color:var(--gap)">●</span> <strong>Missing Ship Manifest Page (Gap)</strong> — "Pages 34-38 of the SS Carpathia manifest for Oct 1905 are missing from NARA microfilm"<br>
+        <span style="color:var(--doc)">●</span> <strong>1910 Census Entry (Document)</strong> — "Shows grandfather living in Brooklyn, lists arrival year as 1905"</div>
+        <p class="ph-desc">The <strong style="color:var(--gap)">Gap / Unknown</strong> node type is especially important. It marks a specific record that <em>should</em> exist in a specific place — but doesn't. These are your primary findings.</p>
+      </div>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="phase" style="margin-bottom:16px;">
+      <div class="phase-hdr" onclick="this.parentElement.classList.toggle('open')">
+        <div><div class="ph-num">STEP 04</div><div class="ph-title">Connect Your Nodes</div></div>
+        <div class="ph-tog">+</div>
+      </div>
+      <div class="phase-body">
+        <p class="ph-desc">Still in <strong style="color:var(--text)">NODES &amp; EDGES</strong>, scroll down to the <strong style="color:var(--text)">Add Edge</strong> section. Edges are documented connections between nodes — not guesses, but relationships you can source.</p>
+        <p class="ph-desc">Pick two nodes and describe the relationship. Set a weight (how strong or significant the connection is).</p>
+        <div class="ph-ex"><strong>Example edges:</strong><br>
+        Grandfather → Ellis Island — "Processed through Ellis Island per 1910 census declaration"<br>
+        Missing Ship Manifest → Ellis Island — "Manifest gap falls within Ellis Island's own record system"<br>
+        1910 Census → Grandfather — "Census confirms arrival year, provides Brooklyn address"</div>
+      </div>
+    </div>
+
+    <!-- STEP 5 -->
+    <div class="phase" style="margin-bottom:16px;">
+      <div class="phase-hdr" onclick="this.parentElement.classList.toggle('open')">
+        <div><div class="ph-num">STEP 05</div><div class="ph-title">Check Your Map</div></div>
+        <div class="ph-tog">+</div>
+      </div>
+      <div class="phase-body">
+        <p class="ph-desc">Click the <strong style="color:var(--text)">MAP</strong> tab. You'll see your nodes as colored dots with lines connecting them. Drag nodes around to organize them. Scroll to zoom. Click any node to see its details in a side panel.</p>
+        <p class="ph-desc">The map doesn't argue anything — it shows <strong style="color:var(--text)">density</strong>. When multiple unrelated nodes start connecting to the same point, that's a structural finding. When gaps cluster around a specific institution or time period, that's telling you something about the record itself.</p>
+      </div>
+    </div>
+
+    <!-- STEP 6 -->
+    <div class="phase" style="margin-bottom:16px;">
+      <div class="phase-hdr" onclick="this.parentElement.classList.toggle('open')">
+        <div><div class="ph-num">STEP 06</div><div class="ph-title">Write Your Findings</div></div>
+        <div class="ph-tog">+</div>
+      </div>
+      <div class="phase-body">
+        <p class="ph-desc">The <strong style="color:var(--text)">CONTEXT</strong> tab is where your actual writing lives. Create sections — these are the chapters of your investigation. Give each one a category and heading, then write up what you've found.</p>
+        <p class="ph-desc">You can link nodes to your sections so you can always trace a claim back to the evidence on your map.</p>
+        <div class="ph-ex"><strong>Example section:</strong><br>
+        Category: BURDEN OF PROOF<br>
+        Heading: "The Missing Manifest Pages"<br>
+        Content: Your analysis of why those specific pages are missing, what the gap means, and what it does and doesn't prove.</div>
+      </div>
+    </div>
+
+    <!-- STEP 7 -->
+    <div class="phase" style="margin-bottom:16px;">
+      <div class="phase-hdr" onclick="this.parentElement.classList.toggle('open')">
+        <div><div class="ph-num">STEP 07</div><div class="ph-title">Log Documents &amp; Sources</div></div>
+        <div class="ph-tog">+</div>
+      </div>
+      <div class="phase-body">
+        <p class="ph-desc">Use the <strong style="color:var(--text)">DOCUMENTS</strong> tab to track specific documents you've found or are looking for — letters, records, census entries, photographs. Set their status (received, pending, requested, denied) so you can see at a glance where your document trail stands.</p>
+        <p class="ph-desc">Use the <strong style="color:var(--text)">SOURCES</strong> tab to log the archives, libraries, and repositories you're working with — the places the documents come from. Include accession numbers, URLs, and contact info so you can find things again.</p>
+      </div>
+    </div>
+
+    <!-- STEP 8 -->
+    <div class="phase" style="margin-bottom:16px;">
+      <div class="phase-hdr" onclick="this.parentElement.classList.toggle('open')">
+        <div><div class="ph-num">STEP 08</div><div class="ph-title">Test Your Own Work</div></div>
+        <div class="ph-tog">+</div>
+      </div>
+      <div class="phase-body">
+        <p class="ph-desc">The <strong style="color:var(--text)">METHODOLOGY CHECK</strong> tab asks hard questions about your own research. Are you finding real gaps or just missing things? Could the absence be explained by something mundane? Is your methodology falsifiable — could it produce a result that contradicts your expectations?</p>
+        <p class="ph-desc">This is what separates research from belief. If your framework can't fail, it's not a framework — it's a confirmation machine. Answer these questions honestly.</p>
+      </div>
+    </div>
+
+    <!-- STEP 9 -->
+    <div class="phase" style="margin-bottom:16px;">
+      <div class="phase-hdr" onclick="this.parentElement.classList.toggle('open')">
+        <div><div class="ph-num">STEP 09</div><div class="ph-title">Save &amp; Import</div></div>
+        <div class="ph-tog">+</div>
+      </div>
+      <div class="phase-body">
+        <p class="ph-desc"><strong style="color:var(--text)">Your work saves automatically</strong> to your browser as you type. But browsers can lose data if you clear your cache, so use the <strong style="color:var(--text)">SAVE YOUR WORK</strong> tab to download a <strong style="color:var(--text)">.oden file</strong> — a backup of your entire investigation. You can open it again anytime on any computer.</p>
+        <p class="ph-desc">If you have existing research notes, the <strong style="color:var(--text)">IMPORT FILES</strong> tab can extract names, dates, organizations, and key terms from .txt, .md, .csv, or .docx files and turn them into nodes. Nothing gets added without your approval.</p>
+      </div>
+    </div>
+
+    <hr class="thin" style="margin:28px 0;">
+
+    <div style="font-family:var(--serif);font-size:15px;color:var(--accent);margin-bottom:16px;">What You Can Investigate</div>
+    <p style="font-size:12px;line-height:1.8;color:var(--muted);margin-bottom:20px;">ODEN works for any research question where you need to understand the state of the record — not just what's in it, but what's missing and why. Some examples:</p>
+    <div style="display:grid;gap:12px;margin-bottom:28px;">
+      <div style="background:var(--surface);border:1px solid var(--border);padding:14px;">
+        <div style="font-size:11px;letter-spacing:2px;color:var(--accent);margin-bottom:4px;">HISTORICAL RESEARCH</div>
+        <div style="font-size:12px;color:var(--text);line-height:1.7;">Investigating events where the official record may be incomplete — not to prove a conspiracy, but to establish whether the system that produced the record was capable of documenting what happened.</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);padding:14px;">
+        <div style="font-size:11px;letter-spacing:2px;color:var(--accent);margin-bottom:4px;">GENEALOGY</div>
+        <div style="font-size:12px;color:var(--text);line-height:1.7;">Tracing family history through fragmented records across multiple archives and institutions. Mapping which records exist, which are missing, and which institutions controlled the documentation.</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);padding:14px;">
+        <div style="font-size:11px;letter-spacing:2px;color:var(--accent);margin-bottom:4px;">TRUE CRIME &amp; COLD CASES</div>
+        <div style="font-size:12px;color:var(--text);line-height:1.7;">Examining whether investigations were thorough by mapping who controlled evidence, who had jurisdiction, and where the documentation trail breaks down.</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);padding:14px;">
+        <div style="font-size:11px;letter-spacing:2px;color:var(--accent);margin-bottom:4px;">JOURNALISM &amp; INVESTIGATIONS</div>
+        <div style="font-size:12px;color:var(--text);line-height:1.7;">Building structured, sourceable investigations where every claim connects to documented evidence and every gap is identified as a gap — not assumed to be proof of anything.</div>
+      </div>
+    </div>
+
+    <hr class="thin" style="margin:28px 0;">
+
+    <div style="font-family:var(--serif);font-size:15px;color:var(--accent);margin-bottom:16px;">Key Principles</div>
+    <div style="font-size:12px;line-height:1.9;color:var(--muted);margin-bottom:28px;">
+      <p style="margin-bottom:12px;"><strong style="color:var(--text);">Nothing goes on the map without a source.</strong> If you can't point to a document, record, or verified piece of evidence, it doesn't get a node. The map shows what's documented — not what's suspected.</p>
+      <p style="margin-bottom:12px;"><strong style="color:var(--text);">Gaps are findings, not proof.</strong> A missing record is documented as a missing record. It might mean suppression. It might mean bad filing. It might mean the system was never capable of producing that record in the first place. The gap is the finding — the interpretation is separate.</p>
+      <p style="margin-bottom:12px;"><strong style="color:var(--text);">The methodology is falsifiable.</strong> If you can't imagine a result that would contradict your expectations, you're not doing research. Point the framework at something it should fail on. If it fails cleanly, the tool works. If it finds problems everywhere regardless of the case, the tool is broken.</p>
+      <p><strong style="color:var(--text);">Everything stays on your computer.</strong> ODEN runs entirely in your browser. No data is sent anywhere. No account is needed. Your investigation is private until you choose to share it.</p>
+    </div>
+
+    <div style="text-align:center;padding:20px 0;">
+      <button class="btn" onclick="sw('blueprint')" style="font-size:12px;padding:10px 24px;">START WITH THE BLUEPRINT →</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- IMPORT FILES TAB -->
+<div class="tab-panel" id="tab-import" style="position:relative;">
+  <div class="scroll-panel imp-wrap" id="imp-wrap">
+    <div class="mbox">
+      <h3>Import Your Notes → ODEN Nodes</h3>
+      <p>Drop in your existing research files and ODEN will extract entities, dates, organizations, and key terms — turning them into nodes you can edit, connect, and map. Nothing gets added without your approval.</p>
+      <p style="color:var(--accent)">All processing happens entirely in your browser. Your files never leave your computer.</p>
+    </div>
+
+    <!-- DROP ZONE -->
+    <div class="imp-drop" id="imp-drop" onclick="document.getElementById('imp-file-input').click()">
+      <div id="imp-file-input-wrap">
+        <input type="file" id="imp-file-input" style="display:none" accept=".txt,.md,.csv,.docx" onchange="handleImpFile(event)">
+      </div>
+      <div class="imp-drop-icon">⇑</div>
+      <div class="imp-drop-title">Drop a file here or click to browse</div>
+      <div class="imp-drop-sub">Drag &amp; drop supported</div>
+      <div class="imp-types">
+        <div class="imp-type-chip">.txt</div>
+        <div class="imp-type-chip">.md</div>
+        <div class="imp-type-chip">.csv</div>
+        <div class="imp-type-chip">.docx</div>
+      </div>
+    </div>
+
+    <!-- OR PASTE TEXT -->
+    <div class="save-sec">
+      <h3>Or Paste Text Directly</h3>
+      <p>Paste any notes, transcriptions, or copied text below.</p>
+      <textarea class="imp-paste-area" id="imp-paste" placeholder="Paste your research notes here...&#10;&#10;Works best with:&#10;- Headings or capitalized names&#10;- Dates (e.g. April 7, 1909 / June 12 1985)&#10;- Organization / Department / Bureau names&#10;- Legal: court, warrant, verdict, defendant&#10;- Genealogy: birth, death, marriage, census, probate&#10;- Science: study, hypothesis, specimen, findings&#10;- Medical: diagnosis, hospital, patient, autopsy&#10;- [[Obsidian-style links]]&#10;- CSV rows: Label, Type, Description"></textarea>
+      <div class="btn-row">
+        <button class="btn" onclick="parseImpText(document.getElementById('imp-paste').value,'pasted text')">⊛ EXTRACT FROM TEXT</button>
+        <button class="btn btn-m" onclick="document.getElementById('imp-paste').value=''">CLEAR</button>
+      </div>
+    </div>
+
+    <!-- PREVIEW -->
+    <div class="imp-preview" id="imp-preview">
+      <h3>Extracted Nodes — Review Before Adding</h3>
+      <div class="imp-preview-sub" id="imp-preview-sub"></div>
+      <div class="imp-status" id="imp-status"></div>
+      <div id="imp-node-list"></div>
+      <div class="btn-row" style="margin-top:16px">
+        <button class="btn" onclick="commitImpNodes()">⊞ ADD CHECKED NODES TO ODEN</button>
+        <button class="btn btn-m" onclick="clearImpPreview()">CANCEL</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</div><!-- end #content -->
+
+<script>
+// ══════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════
+let S = { caseName:'', nodes:[], edges:[], blueprint:{},
+          contextSections:[], documents:[], sources:[] };
+let selectedNId=null, editingNId=null, editingDocId=null;
+let activeSecId=null, docFilter='all';
+
+const TC={actor:'#c8923f',person:'#e0a860',institution:'#7a9e7e',gap:'#5a8fc4',location:'#b07e85',event:'#d4a843',media:'#c49a6c',document:'#7ab8b0',concept:'#a87ab8',object:'#7a9e6a',relation:'#c47a8a',financial:'#a8c44a',witness:'#7aaed4',suspect:'#c46a4a',law:'#6a8ab8',science:'#7ac4b8',family:'#c4606a',network:'#4ab8a8',period:'#c4a882',alias:'#c4907a',rumor:'#b87a9a',pattern:'#6a8aaa'};
+const TL={actor:'PERSON / ACTOR',person:'PERSON',institution:'ORGANIZATION',gap:'GAP / UNKNOWN',location:'LOCATION',event:'EVENT',media:'MEDIA',document:'DOCUMENT / RECORD',concept:'CONCEPT / THEORY',object:'OBJECT / ARTIFACT',relation:'RELATIONSHIP / CONNECTION',financial:'FINANCIAL / TRANSACTION',witness:'WITNESS / SOURCE',suspect:'UNKNOWN / SUSPECT',law:'LEGISLATION / LAW',science:'SCIENTIFIC FINDING',family:'FAMILY / LINEAGE',network:'NETWORK / GROUP',period:'PERIOD / SPAN',alias:'ALIAS / IDENTITY',rumor:'RUMOR / CLAIM',pattern:'PATTERN / BEHAVIOR'};
+
+const BP=['event','period','physical','press','science','political','financial','records','adjacent','requests','patterns','graph-notes','closed','control','control-result','confirms','absences','open','falsify'];
+
+function gid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+function msg(id){const e=document.getElementById(id);if(!e)return;e.style.display='block';setTimeout(()=>e.style.display='none',2000);}
+
+// ══════════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════════
+function sw(name){
+  const order=['guide','map','context','docs','sources','blueprint','nodes','check','save','import'];
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>{p.classList.remove('active');});
+  const i=order.indexOf(name);
+  if(i>=0)document.querySelectorAll('.tab-btn')[i].classList.add('active');
+  const p=document.getElementById('tab-'+name);
+  if(p){p.classList.add('active');}
+  if(name==='map')setTimeout(resizeCv,50);
+  if(name==='context'){renderSecList();updateCtxSel();}
+  if(name==='docs'){renderDocList();updateDocNodeSel();renderDocFilter();}
+  if(name==='sources')renderSrcList();
+  if(name==='nodes'){renderNList();renderEList();updateNSelects();updateSecSel();}
+}
+
+// ══════════════════════════════════════════════════
+// BLUEPRINT
+// ══════════════════════════════════════════════════
+function tph(id){document.getElementById(id).classList.toggle('open');}
+const phaseFields={
+  1:['event','period','physical','press','science','political','financial'],
+  2:['records','adjacent'],
+  3:['requests','patterns'],
+  4:['graph-notes','closed'],
+  5:['control','control-result'],
+  6:['confirms','absences','open','falsify']
+};
+function updatePhaseStatus(){
+  for(let i=1;i<=6;i++){
+    const dot=document.getElementById('ph-status-'+i);
+    if(!dot)continue;
+    const hasContent=(phaseFields[i]||[]).some(f=>{
+      const el=document.getElementById('bp-'+f);
+      return el&&el.value.trim().length>0;
+    });
+    dot.classList.toggle('has-content',hasContent);
+    dot.title=hasContent?'Phase has content':'Phase is empty';
+  }
+}
+function saveBP(){BP.forEach(f=>{const e=document.getElementById('bp-'+f);if(e)S.blueprint[f]=e.value;});updatePhaseStatus();}
+function loadBP(){BP.forEach(f=>{const e=document.getElementById('bp-'+f);if(e&&S.blueprint[f]!==undefined)e.value=S.blueprint[f];});updatePhaseStatus();}
+
+// ══════════════════════════════════════════════════
+// CONTEXT SECTIONS
+// ══════════════════════════════════════════════════
+function addSection(){
+  const cat=document.getElementById('cs-cat').value.trim();
+  const hdg=document.getElementById('cs-hdg').value.trim();
+  if(!hdg){alert('Heading required.');return;}
+  const sec={id:gid(),category:cat.toUpperCase(),heading:hdg,body:'',linkedNodes:[]};
+  S.contextSections.push(sec);
+  document.getElementById('cs-cat').value='';
+  document.getElementById('cs-hdg').value='';
+  renderSecList();updateSecSel();updateCtxSel();updateStats();save();
+  msg('ctx-ok');openSec(sec.id);
+}
+
+function openSec(id){
+  activeSecId=id;
+  const sec=S.contextSections.find(s=>s.id===id);if(!sec)return;
+  document.getElementById('ctx-empty').style.display='none';
+  document.getElementById('ctx-write').style.display='block';
+  document.getElementById('cw-cat').textContent=sec.category||'SECTION';
+  document.getElementById('cw-hdg').textContent=sec.heading;
+  document.getElementById('ctx-body').value=sec.body||'';
+  renderSecList();renderCtxLN();updateCtxSel();
+}
+
+function saveBody(){
+  if(!activeSecId)return;
+  const sec=S.contextSections.find(s=>s.id===activeSecId);
+  if(sec){sec.body=document.getElementById('ctx-body').value;save();}
+}
+
+function editSection(){
+  const sec=S.contextSections.find(s=>s.id===activeSecId);if(!sec)return;
+  const h=prompt('Heading:',sec.heading);if(h===null)return;
+  const c=prompt('Category:',sec.category);if(c===null)return;
+  sec.heading=h;sec.category=c.toUpperCase();
+  document.getElementById('cw-cat').textContent=sec.category;
+  document.getElementById('cw-hdg').textContent=sec.heading;
+  renderSecList();updateSecSel();save();
+}
+
+function deleteSection(){
+  const sec=S.contextSections.find(s=>s.id===activeSecId);if(!sec)return;
+  if(!confirm('Delete "'+sec.heading+'"?'))return;
+  S.nodes.forEach(n=>{if(n.section===activeSecId)n.section='';});
+  S.contextSections=S.contextSections.filter(s=>s.id!==activeSecId);
+  activeSecId=null;
+  document.getElementById('ctx-empty').style.display='block';
+  document.getElementById('ctx-write').style.display='none';
+  renderSecList();updateSecSel();updateStats();save();
+}
+
+function linkNode(){
+  if(!activeSecId)return;
+  const nid=document.getElementById('ctx-node-sel').value;if(!nid)return;
+  const sec=S.contextSections.find(s=>s.id===activeSecId);if(!sec)return;
+  if(!sec.linkedNodes)sec.linkedNodes=[];
+  if(sec.linkedNodes.includes(nid))return;
+  sec.linkedNodes.push(nid);
+  const n=S.nodes.find(x=>x.id===nid);if(n)n.section=activeSecId;
+  renderCtxLN();renderSecList();save();
+}
+
+function unlinkNode(nid){
+  const sec=S.contextSections.find(s=>s.id===activeSecId);if(!sec)return;
+  sec.linkedNodes=(sec.linkedNodes||[]).filter(id=>id!==nid);
+  const n=S.nodes.find(x=>x.id===nid);if(n&&n.section===activeSecId)n.section='';
+  renderCtxLN();renderSecList();save();
+}
+
+function renderCtxLN(){
+  const sec=S.contextSections.find(s=>s.id===activeSecId);
+  const list=document.getElementById('ctx-ln-list');
+  document.getElementById('ctx-link-count').textContent=sec?(sec.linkedNodes||[]).length:0;
+  if(!sec||(sec.linkedNodes||[]).length===0){list.innerHTML='<div class="empty" style="text-align:left;padding:8px 0">No nodes linked yet.</div>';return;}
+  list.innerHTML=sec.linkedNodes.map(nid=>{
+    const n=S.nodes.find(x=>x.id===nid);if(!n)return'';
+    return`<div class="ctx-ln"><div class="cln-dot" style="background:${TC[n.type]}"></div><div class="cln-nm">${n.label}</div><button onclick="unlinkNode('${n.id}')">✕</button></div>`;
+  }).join('');
+}
+
+function renderSecList(){
+  const list=document.getElementById('sec-list');
+  document.getElementById('sec-count').textContent=S.contextSections.length;
+  if(!S.contextSections.length){list.innerHTML='<div class="empty">No sections yet.</div>';return;}
+  list.innerHTML=S.contextSections.map(s=>{
+    const pills=(s.linkedNodes||[]).map(nid=>{
+      const n=S.nodes.find(x=>x.id===nid);
+      return n?`<div class="pill"><div class="pill-dot" style="background:${TC[n.type]}"></div>${n.label.slice(0,18)}</div>`:'';
+    }).join('');
+    return`<div class="csc ${activeSecId===s.id?'act':''}" onclick="openSec('${s.id}')">
+      <div class="csc-hdr"><div><div class="csc-cat">${s.category||'SECTION'}</div><div class="csc-ttl">${s.heading}</div></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        <div class="csc-meta">${(s.linkedNodes||[]).length} node${(s.linkedNodes||[]).length!==1?'s':''}</div>
+        <div style="font-size:9px;color:var(--muted);letter-spacing:1px">${activeSecId===s.id?'EDITING ▼':'CLICK TO WRITE →'}</div>
+      </div></div>
+      ${pills?`<div class="csc-pills">${pills}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function updateCtxSel(){
+  const sel=document.getElementById('ctx-node-sel');
+  const sec=activeSecId?S.contextSections.find(s=>s.id===activeSecId):null;
+  const linked=sec?(sec.linkedNodes||[]):[];
+  sel.innerHTML='<option value="">— link a node to this section —</option>'+
+    S.nodes.filter(n=>!linked.includes(n.id)).map(n=>`<option value="${n.id}">${n.label}</option>`).join('');
+}
+
+function updateSecSel(){
+  const sel=document.getElementById('n-section');
+  sel.innerHTML='<option value="">— no context section linked —</option>'+
+    S.contextSections.map(s=>`<option value="${s.id}">${s.category?s.category+' — ':''}${s.heading}</option>`).join('');
+}
+
+function goToSec(id){sw('context');setTimeout(()=>openSec(id),80);}
+
+// ══════════════════════════════════════════════════
+// DOCUMENTS
+// ══════════════════════════════════════════════════
+function addDoc(){
+  const title=document.getElementById('doc-title').value.trim();
+  if(!title){alert('Title required.');return;}
+  const data={
+    id:editingDocId||gid(),
+    title,
+    category:document.getElementById('doc-cat').value,
+    status:document.getElementById('doc-stat').value,
+    institution:document.getElementById('doc-inst').value.trim(),
+    date:document.getElementById('doc-date').value.trim(),
+    url:document.getElementById('doc-url').value.trim(),
+    desc:document.getElementById('doc-desc').value.trim(),
+    nodeIds:Array.from(document.getElementById('doc-node-sel').selectedOptions).map(o=>o.value),
+    imageData:(function(){var p=document.getElementById('doc-img-preview');return(p&&p.style.display!=='none'&&p.src&&p.src.startsWith('data:'))?p.src:'';})() 
+  };
+  if(editingDocId){
+    const i=S.documents.findIndex(d=>d.id===editingDocId);
+    if(i>=0)S.documents[i]=data;
+    editingDocId=null;
+    document.getElementById('doc-form-title').textContent='Add Document';
+  }else{
+    S.documents.push(data);
+  }
+  clearDocForm();renderDocList();renderDocFilter();updateStats();save();msg('doc-ok');var dc=document.getElementById('doc-col');var db=document.getElementById('doc-toggle-btn');if(dc&&dc.style.display==='none'){dc.style.display='block';if(db)db.textContent='\u25bc HIDE';}
+}
+
+function clearDocForm(){
+  ['doc-title','doc-inst','doc-date','doc-url','doc-desc'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('doc-cat').value='Travel Records';
+  document.getElementById('doc-stat').value='received';
+  clearDocImage();
+  editingDocId=null;
+  document.getElementById('doc-form-title').textContent='Add Document';
+}
+
+function editDoc(id){
+  const d=S.documents.find(x=>x.id===id);if(!d)return;
+  editingDocId=id;
+  document.getElementById('doc-title').value=d.title;
+  document.getElementById('doc-cat').value=d.category;
+  document.getElementById('doc-stat').value=d.status;
+  document.getElementById('doc-inst').value=d.institution||'';
+  document.getElementById('doc-date').value=d.date||'';
+  document.getElementById('doc-url').value=d.url||'';
+  document.getElementById('doc-desc').value=d.desc||'';
+  const sel=document.getElementById('doc-node-sel');
+  Array.from(sel.options).forEach(o=>o.selected=(d.nodeIds||[]).includes(o.value));
+  if(d.imageData){var p=document.getElementById('doc-img-preview');var pr=document.getElementById('doc-img-prompt');var cb=document.getElementById('doc-img-clear');if(p){p.src=d.imageData;p.style.display='block';}if(pr)pr.style.display='none';if(cb)cb.style.display='inline';}else{clearDocImage();}
+  document.getElementById('doc-form-title').textContent='Edit Document';
+  sw('docs');document.querySelector('.docs-l').scrollTop=0;
+}
+
+function delDoc(id){
+  if(!confirm('Delete this document?'))return;
+  S.documents=S.documents.filter(d=>d.id!==id);
+  docFilter='all';renderDocList();renderDocFilter();updateStats();save();var dc=document.getElementById('doc-col');var db=document.getElementById('doc-toggle-btn');if(dc&&dc.style.display==='none'){dc.style.display='block';if(db)db.textContent='\u25bc HIDE';}
+}
+
+function renderDocList(){
+  var dc=document.getElementById('doc-col');if(dc)dc.style.display='block';
+  const list=document.getElementById('doc-list');
+  let docs=S.documents;
+  if(docFilter!=='all')docs=docs.filter(d=>d.category===docFilter);
+  if(!docs.length){list.innerHTML='<div class="empty">No documents yet. Add primary sources, archive results, and obtained documents.</div>';return;}
+  const sc={received:'s-recv',pending:'s-pend',requested:'s-req',denied:'s-deny'};
+  list.innerHTML=docs.map(d=>{
+    const pills=(d.nodeIds||[]).map(nid=>{
+      const n=S.nodes.find(x=>x.id===nid);
+      return n?`<div class="pill"><div class="pill-dot" style="background:${TC[n.type]}"></div>${n.label.slice(0,18)}</div>`:'';
+    }).join('');
+    return`<div class="doc-card">
+      <div class="doc-card-hdr">
+        <div style="flex:1"><div class="doc-title">${d.title}</div>
+        <div class="doc-meta">${d.category}${d.institution?' · '+d.institution:''}${d.date?' · '+d.date:''}</div></div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+          <div class="doc-status ${sc[d.status]||'s-pend'}">${d.status.toUpperCase()}</div>
+          <div style="display:flex;gap:4px">
+            <button class="btn btn-sm btn-m" onclick="editDoc('${d.id}')">edit</button>
+            <button class="btn btn-sm btn-d" onclick="delDoc('${d.id}')">✕</button>
+          </div>
+        </div>
+      </div>
+      ${d.desc?`<div class="doc-desc">${d.desc}</div>`:''}
+      ${d.imageData?`<div class="doc-img-wrap"><img src="${d.imageData}" onclick="viewDocImage('${d.id}')" title="Click to view full size"><div class="doc-img-label">ATTACHED IMAGE</div></div>`:''}
+      ${d.url?`<a class="doc-view" href="${d.url}" target="_blank">↗ VIEW DOCUMENT</a>`:''}
+      ${pills?`<div class="csc-pills" style="padding:0 14px 10px">${pills}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function renderDocFilter(){
+  const cats=['all',...new Set(S.documents.map(d=>d.category))];
+  document.getElementById('doc-filter-bar').innerHTML=cats.map(c=>
+    `<button class="fchip ${docFilter===c?'act':''}" onclick="filterDocs('${c}',this)">${c.toUpperCase()}</button>`
+  ).join('');
+}
+
+function filterDocs(cat,btn){
+  docFilter=cat;
+  document.querySelectorAll('.fchip').forEach(b=>b.classList.remove('act'));
+  btn.classList.add('act');renderDocList();
+}
+
+function updateDocNodeSel(){
+  const sel=document.getElementById('doc-node-sel');
+  sel.innerHTML=S.nodes.map(n=>`<option value="${n.id}">${n.label}</option>`).join('');
+}
+
+function getDocsByNode(nid){return S.documents.filter(d=>(d.nodeIds||[]).includes(nid));}
+
+// ══════════════════════════════════════════════════
+// SOURCES
+// ══════════════════════════════════════════════════
+function toggleSrcForm(){document.getElementById('src-form').classList.toggle('open');}
+
+function addSrc(){
+  const title=document.getElementById('src-title').value.trim();
+  if(!title){alert('Title required.');return;}
+  S.sources.push({id:gid(),title,institution:document.getElementById('src-inst').value.trim(),date:document.getElementById('src-date').value.trim(),rg:document.getElementById('src-rg').value.trim(),url:document.getElementById('src-url').value.trim(),notes:document.getElementById('src-notes').value.trim()});
+  ['src-title','src-inst','src-date','src-rg','src-url','src-notes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('src-form').classList.remove('open');
+  renderSrcList();updateStats();save();
+}
+
+function delSrc(id){
+  if(!confirm('Delete this source?'))return;
+  S.sources=S.sources.filter(s=>s.id!==id);
+  renderSrcList();updateStats();save();
+}
+
+function pullSources(){
+  let added=0;
+  S.nodes.forEach(n=>{
+    (n.sources||[]).forEach(src=>{
+      if(!src.label)return;
+      const exists=S.sources.find(s=>s.title===src.label&&s.url===(src.url||''));
+      if(!exists){S.sources.push({id:gid(),title:src.label,institution:'',date:'',rg:'',url:src.url||'',notes:''});added++;}
+    });
+  });
+  renderSrcList();updateStats();save();
+  alert(added>0?`${added} source${added>1?'s':''} imported from node data.`:'No new sources found in nodes.');
+}
+
+function renderSrcList(){
+  const list=document.getElementById('src-list');
+  if(!S.sources.length){list.innerHTML='<div class="empty">No sources yet. Add them above, or use "Pull from Nodes" to import sources already entered on node cards.</div>';return;}
+  const getRefNodes=src=>{
+    if(!src.url)return[];
+    return S.nodes.filter(n=>(n.sources||[]).some(s=>s.url===src.url));
+  };
+  list.innerHTML=S.sources.map((src,i)=>{
+    const refs=getRefNodes(src);
+    const refPills=refs.map(n=>`<div class="src-ref"><div class="srd" style="background:${TC[n.type]}"></div>${n.label.slice(0,18)}</div>`).join('');
+    return`<div class="src-item">
+      <div class="src-num">${String(i+1).padStart(2,'0')}</div>
+      <div class="src-body">
+        <div class="src-ttl">${src.title}</div>
+        ${src.url?`<div class="src-url"><a href="${src.url}" target="_blank">↗ ${src.url.slice(0,60)}${src.url.length>60?'...':''}</a></div>`:''}
+        <div class="src-meta">${[src.institution,src.rg,src.date].filter(Boolean).join(' · ')}</div>
+        ${src.notes?`<div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6">${src.notes}</div>`:''}
+        ${refPills?`<div class="src-refs">${refPills}</div>`:''}
+      </div>
+      <button class="btn btn-sm btn-d" onclick="delSrc('${src.id}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════
+// NODES
+// ══════════════════════════════════════════════════
+function addNode(){
+  const label=document.getElementById('n-label').value.trim();
+  if(!label){alert('Label required.');return;}
+  const type=document.getElementById('n-type').value;
+  const desc=document.getElementById('n-desc').value.trim();
+  const tags=document.getElementById('n-tags').value.split(',').map(t=>t.trim()).filter(Boolean).map(t=>[t,type]);
+  const srcRaw=document.getElementById('n-sources').value.trim();
+  const sources=srcRaw?srcRaw.split('\n').map(l=>{const[a,b]=l.split('|').map(s=>s.trim());return{label:a||l,url:b||''};}):[];
+  const section=document.getElementById('n-section').value;
+  const placeholder=document.getElementById('n-placeholder').checked;
+  const angle=Math.random()*Math.PI*2,dist=200+Math.random()*400;
+  if(editingNId){
+    const n=S.nodes.find(x=>x.id===editingNId);
+    if(n)Object.assign(n,{label,type,desc,tags,sources,section,placeholder});
+    editingNId=null;document.getElementById('nform-title').textContent='Add Node';
+  }else{
+    const nn={id:'n'+gid(),label,type,desc,tags,sources,section,placeholder,x:Math.cos(angle)*dist,y:Math.sin(angle)*dist,size:14,vx:0,vy:0};
+    S.nodes.push(nn);
+    if(section){const sec=S.contextSections.find(s=>s.id===section);if(sec){if(!sec.linkedNodes)sec.linkedNodes=[];if(!sec.linkedNodes.includes(nn.id))sec.linkedNodes.push(nn.id);}}
+  }
+  clearNF();renderNList();updateNSelects();updateSecSel();updateCtxSel();updateDocNodeSel();updateStats();save();runSim(200);msg('n-ok');
+}
+
+function clearNF(){
+  ['n-label','n-desc','n-tags','n-sources'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('n-type').value='actor';
+  document.getElementById('n-section').value='';
+  document.getElementById('n-placeholder').checked=false;
+  editingNId=null;document.getElementById('nform-title').textContent='Add Node';
+}
+
+function editNode(id){
+  const n=S.nodes.find(x=>x.id===id);if(!n)return;
+  editingNId=id;
+  document.getElementById('n-label').value=n.label;
+  document.getElementById('n-type').value=n.type;
+  document.getElementById('n-desc').value=n.desc||'';
+  document.getElementById('n-tags').value=n.tags.map(t=>t[0]).join(', ');
+  document.getElementById('n-sources').value=n.sources.map(s=>s.url?`${s.label} | ${s.url}`:s.label).join('\n');
+  document.getElementById('n-section').value=n.section||'';
+  document.getElementById('n-placeholder').checked=!!n.placeholder;
+  document.getElementById('nform-title').textContent='Edit Node';
+  sw('nodes');
+}
+
+function delNode(id){
+  if(!confirm('Delete this node and all its connections?'))return;
+  S.nodes=S.nodes.filter(n=>n.id!==id);
+  S.edges=S.edges.filter(e=>e[0]!==id&&e[1]!==id);
+  S.contextSections.forEach(s=>{if(s.linkedNodes)s.linkedNodes=s.linkedNodes.filter(n=>n!==id);});
+  S.documents.forEach(d=>{if(d.nodeIds)d.nodeIds=d.nodeIds.filter(n=>n!==id);});
+  renderNList();renderEList();updateNSelects();updateStats();save();runSim(100);
+}
+
+function renderNList(){
+  const list=document.getElementById('n-list');
+  document.getElementById('n-count').textContent=S.nodes.length;
+  if(!S.nodes.length){list.innerHTML='<div class="empty">No nodes yet.</div>';return;}
+  list.innerHTML=S.nodes.map(n=>{
+    const hasSec=n.section&&S.contextSections.find(s=>s.id===n.section);
+    return`<div class="nli"><div class="nli-dot" style="background:${TC[n.type]};${n.placeholder?'opacity:0.5;outline:1px dashed '+TC[n.type]+';outline-offset:2px':''}"></div>
+      <div class="nli-name">${n.label}${hasSec?'<span class="badge">CTX</span>':''}${n.placeholder?'<span class="badge" style="background:#555;color:#aaa">DRAFT</span>':''}</div>
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-sm btn-m" onclick="event.stopPropagation();editNode('${n.id}')">edit</button>
+        <button class="btn btn-sm btn-d" onclick="event.stopPropagation();delNode('${n.id}')">✕</button>
+      </div></div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════
+// EDGES
+// ══════════════════════════════════════════════════
+function addEdge(){
+  const from=document.getElementById('e-from').value,to=document.getElementById('e-to').value;
+  if(!from||!to){alert('Select both nodes.');return;}
+  if(from===to){alert('Cannot connect to itself.');return;}
+  S.edges.push([from,to,document.getElementById('e-type').value,document.getElementById('e-label').value.trim(),parseInt(document.getElementById('e-weight').value)]);
+  clearEF();renderEList();updateStats();save();msg('e-ok');
+}
+
+function clearEF(){
+  ['e-from','e-to','e-label'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('e-weight').value='2';
+}
+
+function delEdge(i){S.edges.splice(i,1);renderEList();updateStats();save();}
+
+function renderEList(){
+  const list=document.getElementById('e-list');
+  document.getElementById('e-count').textContent=S.edges.length;
+  if(!S.edges.length){list.innerHTML='<div class="empty">No connections yet.</div>';return;}
+  const gl=id=>{const n=S.nodes.find(x=>x.id===id);return n?n.label:id;};
+  list.innerHTML=S.edges.map((e,i)=>`<div class="eli"><div class="el-n">${gl(e[0])} ↔ ${gl(e[1])}</div><div class="ew">w${e[4]}</div><button class="btn btn-sm btn-d" onclick="delEdge(${i})">✕</button></div>`).join('');
+}
+
+function updateNSelects(){
+  const opts='<option value="">— select —</option>'+S.nodes.map(n=>`<option value="${n.id}">${n.label}</option>`).join('');
+  document.getElementById('e-from').innerHTML=opts;
+  document.getElementById('e-to').innerHTML=opts;
+}
+
+// ══════════════════════════════════════════════════
+// NODE PANEL
+// ══════════════════════════════════════════════════
+function openNP(nid){
+  const raw=S.nodes.find(n=>n.id===nid);if(!raw)return;
+  selectedNId=nid;
+  document.getElementById('np-type').textContent=TL[raw.type]||raw.type;
+  document.getElementById('np-type').style.color=TC[raw.type]||'#888';
+  document.getElementById('np-title').textContent=raw.label;
+  document.getElementById('np-desc').textContent=raw.desc||'(No description provided)';
+
+  const ctxEl=document.getElementById('np-ctx-link');
+  const docEl=document.getElementById('np-doc-links');
+  const divEl=document.getElementById('np-links-div');
+  let hasLinks=false;
+
+  if(raw.section){
+    const sec=S.contextSections.find(s=>s.id===raw.section);
+    if(sec){
+      hasLinks=true;
+      ctxEl.innerHTML=`<button class="np-link-btn" onclick="goToSec('${sec.id}')"><span>≡ ${(sec.category||'CONTEXT')} — ${sec.heading.slice(0,34)}${sec.heading.length>34?'…':''}</span><span class="arr">→</span></button>`;
+    }else ctxEl.innerHTML='';
+  }else ctxEl.innerHTML='';
+
+  const docs=getDocsByNode(nid);
+  if(docs.length){
+    hasLinks=true;
+    const sc={received:'var(--inst)',pending:'var(--muted)',requested:'var(--event)',denied:'#a04040'};
+    docEl.innerHTML=docs.map(d=>`<button class="np-link-btn" onclick="sw('docs')"><span>☰ ${d.title.slice(0,34)}${d.title.length>34?'…':''}</span><span style="font-size:9px;padding:1px 5px;border:1px solid;border-color:${sc[d.status]||'var(--muted)'};color:${sc[d.status]||'var(--muted)'}">${d.status.toUpperCase()}</span><span class="arr">→</span></button>`).join('');
+  }else docEl.innerHTML='';
+
+  divEl.style.display=hasLinks?'block':'none';
+  const tags=document.getElementById('np-tags');
+  tags.innerHTML=(raw.tags||[]).map(t=>`<span class="np-tag">${t[0]}</span>`).join('')||'<span style="color:var(--muted);font-size:11px">None</span>';
+  const srcs=document.getElementById('np-srcs');
+  srcs.innerHTML=(raw.sources||[]).length?raw.sources.map(s=>`<li>${s.url?`<a href="${s.url}" target="_blank">${s.label}</a>`:`<span class="np-nosrc">${s.label}</span>`}</li>`).join(''):'<li><span class="np-nosrc">No sources added</span></li>';
+  document.getElementById('node-panel').classList.add('open');
+  const mlb=document.getElementById('mobile-legend-btn');if(mlb)mlb.style.display='none';
+  const mlo=document.getElementById('mobile-legend-overlay');if(mlo)mlo.style.display='none';
+}
+
+function closeNP(){selectedNId=null;document.getElementById('node-panel').classList.remove('open');if(isMobile()){const mlb=document.getElementById('mobile-legend-btn');if(mlb)mlb.style.display='flex';}}
+
+// ══════════════════════════════════════════════════
+// STATS
+// ══════════════════════════════════════════════════
+function updateStats(){
+  document.getElementById('sn').textContent=S.nodes.length;
+  document.getElementById('se').textContent=S.edges.length;
+  document.getElementById('ss').textContent=S.contextSections.length;
+  document.getElementById('sd').textContent=S.documents.length;
+}
+
+// ══════════════════════════════════════════════════
+// SAVE / LOAD
+// ══════════════════════════════════════════════════
+function save(notify){
+  try{
+    saveBP();S.caseName=document.getElementById('case-name').value;
+    localStorage.setItem('oden_v2',JSON.stringify(S));
+    if(notify){const m=document.getElementById('save-ok');m.textContent='Saved ✓';m.style.display='inline';setTimeout(()=>m.style.display='none',2000);}
+  }catch(e){}
+}
+
+function load(){
+  try{
+    const raw=localStorage.getItem('oden_v2');if(!raw)return;
+    const s=JSON.parse(raw);
+    S=Object.assign({contextSections:[],documents:[],sources:[],blueprint:{}},s);
+    document.getElementById('case-name').value=S.caseName||'';
+    loadBP();renderNList();renderEList();updateNSelects();updateSecSel();updateStats();runSim(400);
+  }catch(e){}
+}
+
+function exportODEN(){
+  save();
+  const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/octet-stream'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const name=(S.caseName||'oden-research').replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+  a.href=url;a.download=name+'.oden';a.click();URL.revokeObjectURL(url);
+  localStorage.setItem('oden_last_export',Date.now());
+  updateBackupReminder();
+}
+
+function importODEN(ev){
+  const file=ev.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const s=JSON.parse(e.target.result);
+      S=Object.assign({contextSections:[],documents:[],sources:[],blueprint:{}},s);
+      document.getElementById('case-name').value=S.caseName||'';
+      loadBP();renderNList();renderEList();updateNSelects();updateSecSel();
+      renderSecList();renderDocList();renderSrcList();
+      updateStats();save();runSim(400);
+      msg('import-ok');
+    }catch(err){alert('That file couldn\'t be opened. Make sure it\'s a .oden file saved from this tool.');}
+  };
+  reader.readAsText(file);ev.target.value='';
+}
+
+// ══════════════════════════════════════════════════
+// METHODOLOGY SELF-CHECK
+// ══════════════════════════════════════════════════
+function runCheck(){
+  const checks=[];
+  const allNodes=S.nodes, edges=S.edges;
+  const placeholders=allNodes.filter(n=>n.placeholder);
+  const nodes=allNodes.filter(n=>!n.placeholder); // exclude placeholders from all checks
+  const edgeCountById={};
+  edges.forEach(e=>{edgeCountById[e[0]]=(edgeCountById[e[0]]||0)+1;edgeCountById[e[1]]=(edgeCountById[e[1]]||0)+1;});
+
+  // 0. Placeholder summary
+  if(placeholders.length>0){
+    checks.push({pass:null,title:`${placeholders.length} placeholder node${placeholders.length!==1?'s':''} — excluded from checks`,detail:'Placeholder nodes are leads and hunches you haven\'t verified yet. They\'re shown on the map with a dotted outline and skipped by all checks below. Upgrade them by adding sources and unchecking "placeholder." Placeholders: '+placeholders.map(n=>n.label).join(', ')});
+  }
+
+  // 1. Do you have any nodes at all?
+  if(nodes.length===0){
+    checks.push({pass:false,title:'No nodes yet',detail:'Your investigation needs entities — people, institutions, evidence gaps, locations. Add them in the Nodes & Edges tab.'});
+  } else {
+    checks.push({pass:true,title:`${nodes.length} node${nodes.length!==1?'s':''} mapped`,detail:'Your investigation has entities on the map.'});
+  }
+
+  // 2. At least one gap node
+  const gapNodes=nodes.filter(n=>n.type==='gap');
+  if(gapNodes.length===0){
+    checks.push({pass:false,title:'No Gap / Unknown nodes',detail:'The methodology is built around documented absences. You need at least one gap node — a specific missing record in a named repository, not a general "no evidence found." Add gap nodes in the Nodes & Edges tab.'});
+  } else {
+    checks.push({pass:true,title:`${gapNodes.length} Gap / Unknown node${gapNodes.length!==1?'s':''} documented`,detail:'Good. The methodology requires specific documented absences, not general mystery.'});
+  }
+
+  // 3. Nodes missing sources
+  const noSource=nodes.filter(n=>!(n.sources||[]).length||(n.sources||[]).every(s=>!s.label||s.label.trim()===''));
+  if(noSource.length>0){
+    checks.push({pass:false,title:`${noSource.length} node${noSource.length!==1?'s':''} missing sources`,detail:'Every node needs a primary source behind it. The map does not argue — it shows what is documented. Unsourced nodes: '+noSource.map(n=>n.label).join(', ')});
+  } else if(nodes.length>0){
+    checks.push({pass:true,title:'All nodes have sources',detail:'Every entity on the map has at least one source attached.'});
+  }
+
+  // 4. Isolated nodes (no connections)
+  const isolated=nodes.filter(n=>!(edgeCountById[n.id]));
+  if(isolated.length>0){
+    checks.push({pass:false,title:`${isolated.length} isolated node${isolated.length!==1?'s':''} with no connections`,detail:'Nodes with no connections suggest incomplete mapping. If something matters to the investigation, it connects to something else. Isolated nodes: '+isolated.map(n=>n.label).join(', ')});
+  } else if(nodes.length>1){
+    checks.push({pass:true,title:'All nodes are connected',detail:'No isolated entities. Your map is fully networked.'});
+  }
+
+  // 5. Gap nodes connected to an institution or actor
+  const gapOrphans=gapNodes.filter(n=>{
+    const connectedIds=edges.filter(e=>e[0]===n.id||e[1]===n.id).map(e=>e[0]===n.id?e[1]:e[0]);
+    const connectedNodes=connectedIds.map(id=>nodes.find(x=>x.id===id)).filter(Boolean);
+    return!connectedNodes.some(cn=>['actor','person','institution','witness','suspect','network'].includes(cn.type));
+  });
+  if(gapOrphans.length>0){
+    checks.push({pass:false,title:`${gapOrphans.length} gap node${gapOrphans.length!==1?'s':''} not connected to any organization or person`,detail:'A gap node without a connection to a person, organization, or institution is just a missing thing — not a methodology finding. Each gap needs to connect to whoever\'s record-keeping system it falls within: '+gapOrphans.map(n=>n.label).join(', ')});
+  } else if(gapNodes.length>0){
+    checks.push({pass:true,title:'All gap nodes are grounded',detail:'Every documented absence connects to the organization or person responsible for that record.'});
+  }
+
+  // 6. Convergence — any nodes with 3+ connections of different edge types
+  const convergenceNodes=nodes.filter(n=>{
+    const myEdges=edges.filter(e=>e[0]===n.id||e[1]===n.id);
+    const types=new Set(myEdges.map(e=>e[2]));
+    return myEdges.length>=3&&types.size>=2;
+  });
+  if(convergenceNodes.length===0&&nodes.length>3){
+    checks.push({pass:false,title:'No convergence points detected',detail:'The closed system finding requires convergence — multiple independent threads leading to the same people or organizations. Look for entities that appear across different relationship types. If nothing converges, you may not have a closed system yet, or you may need more mapping.'});
+  } else if(convergenceNodes.length>0){
+    checks.push({pass:true,title:`${convergenceNodes.length} convergence point${convergenceNodes.length!==1?'s':''} detected`,detail:'These nodes show up across multiple relationship types: '+convergenceNodes.sort((a,b)=>(edgeCountById[b.id]||0)-(edgeCountById[a.id]||0)).slice(0,5).map(n=>n.label).join(', ')});
+  }
+
+  // 7. Control case in blueprint
+  const hasControl=(S.blueprint['control']||'').trim().length>10;
+  const hasControlResult=(S.blueprint['control-result']||'').trim().length>20;
+  if(!hasControl){
+    checks.push({pass:false,title:'No control case entered',detail:'The methodology self-validates by collapsing on a case you already know the answer to. Without a control case, you can\'t rule out that your framework is just finding mystery everywhere it looks. Fill in Phase 5 of the Blueprint tab.'});
+  } else if(!hasControlResult){
+    checks.push({pass:false,title:'Control case named but result not recorded',detail:'You listed a control case but haven\'t described what happened when you applied the framework to it. That result is the validation. Fill in Phase 5 of the Blueprint tab.'});
+  } else {
+    checks.push({pass:true,title:'Control case documented',detail:'Your methodology has been tested against a known case. This is what separates research from confirmation bias.'});
+  }
+
+  // 8. Honest accounting filled in
+  const accounting=['confirms','absences','open','falsify'].filter(f=>(S.blueprint[f]||'').trim().length<20);
+  if(accounting.length>0){
+    checks.push({pass:false,title:'Honest Accounting section incomplete',detail:'Phase 6 of the Blueprint requires you to state explicitly what is confirmed, what the pattern of absences shows, what remains open, and what would falsify the finding. Missing fields: '+accounting.map(f=>({confirms:'What primary sources confirm',absences:'What the pattern of absences shows',open:'What remains genuinely open',falsify:'What would falsify the finding'})[f]).join('; ')});
+  } else {
+    checks.push({pass:true,title:'Honest Accounting complete',detail:'You\'ve stated what is confirmed, what the absences show, what remains open, and what would change your conclusion.'});
+  }
+
+  // 9. Context sections linked to nodes
+  const sectionsWithNoNodes=S.contextSections.filter(s=>!(s.linkedNodes||[]).length);
+  if(sectionsWithNoNodes.length>0&&S.contextSections.length>0){
+    checks.push({pass:false,title:`${sectionsWithNoNodes.length} context section${sectionsWithNoNodes.length!==1?'s':''} not linked to any nodes`,detail:'Context sections are only navigable if they\'re linked to nodes on the map. A reader can\'t get from the graph to the argument unless the connection is made. Link nodes in the Context tab. Unlinked sections: '+sectionsWithNoNodes.map(s=>s.heading).join(', ')});
+  } else if(S.contextSections.length>0){
+    checks.push({pass:true,title:'All context sections linked to nodes',detail:'Readers can navigate from the graph directly into the written argument.'});
+  }
+
+  // Render — exclude null (placeholder info) from score
+  const scoreable=checks.filter(c=>c.pass!==null);
+  const passed=scoreable.filter(c=>c.pass).length;
+  const total=scoreable.length;
+  const pct=total===0?100:Math.round(passed/total*100);
+  const scoreColor=pct===100?'var(--inst)':pct>=70?'var(--accent)':'#c07070';
+
+  let html=`<div style="border:1px solid var(--border2);padding:20px;margin-bottom:24px;display:flex;align-items:center;gap:20px">
+    <div style="font-size:36px;font-weight:700;font-family:var(--mono);color:${scoreColor}">${pct}%</div>
+    <div>
+      <div style="font-family:var(--serif);font-size:15px;color:var(--text);margin-bottom:4px">${passed} of ${total} checks passed</div>
+      <div style="font-size:11px;color:var(--muted)">${pct===100?'Your investigation meets all methodology requirements.':pct>=70?'Solid foundation. Address the warnings below to strengthen your research.':'Several things need attention before your research is methodology-sound.'}</div>
+    </div>
+  </div>`;
+
+  html+=checks.map(c=>{
+    if(c.pass===null) return `
+      <div style="border:1px solid var(--border2);padding:14px;margin-bottom:10px;background:rgba(60,60,60,.2)">
+        <div style="display:flex;align-items:flex-start;gap:12px">
+          <div style="font-size:16px;flex-shrink:0;margin-top:1px"><span style="color:var(--muted)">◌</span></div>
+          <div>
+            <div style="font-family:var(--serif);font-size:13px;color:var(--muted);margin-bottom:6px">${c.title}</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.7">${c.detail}</div>
+          </div>
+        </div>
+      </div>`;
+    return `
+    <div style="border:1px solid ${c.pass?'var(--border)':'#5a3030'};padding:16px;margin-bottom:10px;background:${c.pass?'transparent':'rgba(90,48,48,.15)'}">
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <div style="font-size:16px;flex-shrink:0;margin-top:1px">${c.pass?'<span style="color:var(--inst)">✓</span>':'<span style="color:#c07070">⚠</span>'}</div>
+        <div>
+          <div style="font-family:var(--serif);font-size:13px;color:${c.pass?'var(--text)':'#e09090'};margin-bottom:6px">${c.title}</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.7">${c.detail}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('check-results').innerHTML=html;
+}
+
+// styles for check tab
+const checkStyle=document.createElement('style');
+checkStyle.textContent=`.save-sec h3{font-family:var(--serif);}`;
+document.head.appendChild(checkStyle);
+
+function confirmClear(){
+  if(!confirm('Delete ALL data? This cannot be undone.'))return;
+  S={caseName:'',nodes:[],edges:[],blueprint:{},contextSections:[],documents:[],sources:[]};
+  document.getElementById('case-name').value='';
+  loadBP();renderNList();renderEList();updateNSelects();
+  renderSecList();renderDocList();renderSrcList();
+  activeSecId=null;
+  document.getElementById('ctx-empty').style.display='block';
+  document.getElementById('ctx-write').style.display='none';
+  updateStats();save();clearCv();
+}
+
+// ══════════════════════════════════════════════════
+// CANVAS / FORCE SIM
+// ══════════════════════════════════════════════════
+let canvas=null, ctx2d=null;
+let W=0,H=0,cam={x:0,y:0,scale:1};
+let sim={nodes:[],edges:[]};
+let dragging=null,panning=null,hovNode=null,animId=null,animT=0,simF=0;
+
+function resizeCv(){
+  if(!canvas){canvas=document.getElementById('map-canvas');ctx2d=canvas?canvas.getContext('2d'):null;}
+  if(!canvas)return;
+  const p=document.getElementById('map-panel');
+  // Use offsetWidth/offsetHeight - more reliable than getBoundingClientRect on Android local files
+  W=p.offsetWidth||window.innerWidth;
+  H=p.offsetHeight;
+  if(H<50){
+    const header=document.getElementById('header');
+    const tabs=document.getElementById('tabs');
+    const hh=(header?header.offsetHeight:0)+(tabs?tabs.offsetHeight:0);
+    H=window.innerHeight-hh;
+  }
+  // Cap to window dimensions
+  W=Math.min(W,window.innerWidth);
+  H=Math.min(H,window.innerHeight);
+  // Set canvas resolution to CSS pixels only — no devicePixelRatio scaling
+  // Setting style dimensions equal to attribute dimensions avoids stretching
+  canvas.width=W;
+  canvas.height=H;
+  canvas.style.width=W+'px';
+  canvas.style.height=H+'px';
+  canvas.style.position='absolute';
+  canvas.style.top='0';
+  canvas.style.left='0';
+  if(!cam.x&&!cam.y){cam.x=W/2;cam.y=H/2;}
+}
+window.addEventListener('resize',()=>{if(document.getElementById('tab-map').classList.contains('active'))resizeCv();});
+
+function syncSim(){
+  const byId={};sim.nodes.forEach(n=>byId[n.id]=n);
+  sim.nodes=S.nodes.map(n=>{const ex=byId[n.id];return ex?Object.assign(ex,{label:n.label,type:n.type,size:n.size||14}):{...n,size:14,vx:0,vy:0,homeX:n.x,homeY:n.y};});
+  sim.edges=S.edges.map(e=>({source:sim.nodes.find(n=>n.id===e[0]),target:sim.nodes.find(n=>n.id===e[1]),weight:e[4]||1,type:e[2],label:e[3]})).filter(e=>e.source&&e.target);
+}
+
+function runSim(frames){
+  simF=frames;syncSim();
+  for(let i=0;i<Math.min(frames,300);i++)step(0.3);
+  sim.nodes.forEach(n=>{n.homeX=n.x;n.homeY=n.y;});
+  startAnim();
+}
+
+function step(d){
+  const kr=18000,ks=0.03,g=0.015;
+  sim.nodes.forEach(n=>{n.fx=0;n.fy=0;});
+  for(let i=0;i<sim.nodes.length;i++)for(let j=i+1;j<sim.nodes.length;j++){
+    const a=sim.nodes[i],b=sim.nodes[j];
+    let dx=b.x-a.x,dy=b.y-a.y;const dist=Math.sqrt(dx*dx+dy*dy)||1;
+    const f=kr/(dist*dist),nx=dx/dist,ny=dy/dist;
+    a.fx-=f*nx;a.fy-=f*ny;b.fx+=f*nx;b.fy+=f*ny;
+  }
+  sim.edges.forEach(e=>{
+    const a=e.source,b=e.target;let dx=b.x-a.x,dy=b.y-a.y;
+    const dist=Math.sqrt(dx*dx+dy*dy)||1;const rest=120+(3-e.weight)*60;
+    const f=ks*(dist-rest),nx=dx/dist,ny=dy/dist;
+    a.fx+=f*nx;a.fy+=f*ny;b.fx-=f*nx;b.fy-=f*ny;
+  });
+  sim.nodes.forEach(n=>{n.fx+=-n.x*g;n.fy+=-n.y*g;});
+  sim.nodes.forEach(n=>{
+    if(n===dragging)return;
+    n.vx=(n.vx+n.fx)*(1-d);n.vy=(n.vy+n.fy)*(1-d);n.x+=n.vx;n.y+=n.vy;
+  });
+}
+
+function toggleMobileLegend(){
+  const ov=document.getElementById('mobile-legend-overlay');
+  if(ov)ov.style.display=ov.style.display==='none'?'block':'none';
+}
+
+function toggleLegend(){
+  const compact=document.getElementById('legend-compact');
+  const glossary=document.getElementById('legend-glossary');
+  const btn=document.getElementById('legend-toggle-btn');
+  const isGlossary=glossary.style.display!=='none';
+  compact.style.display=isGlossary?'block':'none';
+  glossary.style.display=isGlossary?'none':'block';
+  btn.textContent=isGlossary?'+ GUIDE':'− GUIDE';
+}
+
+function isMobile(){return window.innerWidth<=600;}
+
+function float(n,t){
+  if(isMobile()||n===dragging||n===hovNode)return{dx:0,dy:0};
+  let seed=0;for(let i=0;i<n.id.length;i++)seed+=n.id.charCodeAt(i);
+  const ph=(seed%100)/100*Math.PI*2,amp=hovNode||selectedNId?2:(8+seed%5),sp=0.0008;
+  return{dx:Math.sin(t*sp+ph)*amp,dy:Math.cos(t*(sp*.7)+ph+1)*amp};
+}
+
+function startAnim(){
+  if(animId)return;
+  function frame(ts){animT=ts;if(simF>0){step(.15);simF--;}draw(ts);animId=requestAnimationFrame(frame);}
+  animId=requestAnimationFrame(frame);
+}
+
+function clearCv(){if(!ctx2d)return;syncSim();ctx2d.clearRect(0,0,W,H);}
+function toScr(x,y){return{x:x*cam.scale+cam.x,y:y*cam.scale+cam.y};}
+
+function draw(t){
+  if(!ctx2d)return;
+  ctx2d.clearRect(0,0,W,H);
+  ctx2d.save();ctx2d.strokeStyle='rgba(50,50,50,.3)';ctx2d.lineWidth=.5;
+  const gs=80*cam.scale,ox=cam.x%gs,oy=cam.y%gs;
+  for(let x=ox;x<W;x+=gs){ctx2d.beginPath();ctx2d.moveTo(x,0);ctx2d.lineTo(x,H);ctx2d.stroke();}
+  for(let y=oy;y<H;y+=gs){ctx2d.beginPath();ctx2d.moveTo(0,y);ctx2d.lineTo(W,y);ctx2d.stroke();}
+  ctx2d.restore();
+  if(!sim.nodes.length){ctx2d.fillStyle='#333';ctx2d.font='12px Courier Prime,monospace';ctx2d.textAlign='center';ctx2d.fillText('Add nodes in the NODES & EDGES tab to build your map',W/2,H/2);ctx2d.textAlign='left';return;}
+  ctx2d.save();
+  sim.edges.forEach(e=>{
+    const a=e.source,b=e.target,fa=float(a,t),fb=float(b,t);
+    const ax=(a.x+fa.dx)*cam.scale+cam.x,ay=(a.y+fa.dy)*cam.scale+cam.y;
+    const bx=(b.x+fb.dx)*cam.scale+cam.x,by=(b.y+fb.dy)*cam.scale+cam.y;
+    const hi=a.id===selectedNId||b.id===selectedNId;
+    ctx2d.beginPath();ctx2d.moveTo(ax,ay);ctx2d.lineTo(bx,by);
+    ctx2d.strokeStyle=hi?'rgba(200,146,63,.6)':'rgba(80,80,80,.4)';
+    ctx2d.lineWidth=(e.weight||1)*cam.scale*.6;ctx2d.stroke();
+    if(hi&&e.label&&cam.scale>.6){const mx=(ax+bx)/2,my=(ay+by)/2;ctx2d.font=`${Math.max(9,10*cam.scale)}px Courier Prime,monospace`;ctx2d.fillStyle='rgba(120,100,70,.9)';ctx2d.textAlign='center';ctx2d.fillText(e.label.slice(0,30),mx,my-4);}
+  });
+  sim.nodes.forEach(n=>{
+    const fo=float(n,t),{x,y}=toScr(n.x+fo.dx,n.y+fo.dy);
+    const r=(n.size||14)*cam.scale,color=TC[n.type]||'#888';
+    const isSel=n.id===selectedNId,isHov=n===hovNode;
+    const isPlaceholder=!!n.placeholder;
+    const hasSec=n.section&&S.contextSections.find(s=>s.id===n.section);
+    const alpha=isPlaceholder?0.45:1;
+    ctx2d.globalAlpha=alpha;
+    if(isSel){ctx2d.beginPath();ctx2d.arc(x,y,r*2.5,0,Math.PI*2);const g=ctx2d.createRadialGradient(x,y,0,x,y,r*2.5);g.addColorStop(0,color+'33');g.addColorStop(1,'transparent');ctx2d.fillStyle=g;ctx2d.fill();}
+    // Dotted outline for placeholders
+    ctx2d.beginPath();ctx2d.arc(x,y,r,0,Math.PI*2);
+    if(isPlaceholder){ctx2d.setLineDash([3*cam.scale,3*cam.scale]);}else{ctx2d.setLineDash([]);}
+    ctx2d.strokeStyle=isSel?color:(isHov?color+'aa':color+'55');
+    ctx2d.lineWidth=isSel?2:1;ctx2d.stroke();ctx2d.setLineDash([]);
+    ctx2d.beginPath();ctx2d.arc(x,y,r*.65,0,Math.PI*2);
+    ctx2d.fillStyle=color+(isSel?'cc':(isHov?'99':'44'));ctx2d.fill();
+    if(hasSec&&cam.scale>.5){ctx2d.beginPath();ctx2d.arc(x+r*.7,y-r*.7,r*.25,0,Math.PI*2);ctx2d.fillStyle='#7a9e7e';ctx2d.fill();}
+    // Placeholder badge
+    if(isPlaceholder&&cam.scale>.5){ctx2d.beginPath();ctx2d.arc(x-r*.7,y-r*.7,r*.28,0,Math.PI*2);ctx2d.fillStyle='#555';ctx2d.fill();ctx2d.font=`${Math.max(7,8*cam.scale)}px Courier Prime,monospace`;ctx2d.fillStyle='#aaa';ctx2d.textAlign='center';ctx2d.fillText('?',x-r*.7,y-r*.7+3*cam.scale);}
+    if(cam.scale>.4){const fs=Math.max(9,11*cam.scale);ctx2d.font=`${fs}px Courier Prime,monospace`;ctx2d.textAlign='center';n.label.split('\n').forEach((l,i)=>{ctx2d.fillStyle=isSel?'#ddd':(isPlaceholder?'#777':'#aaa');ctx2d.fillText(l.slice(0,20),x,y+r+fs*(i+1)+2);});}
+    ctx2d.globalAlpha=1;
+  });
+  ctx2d.restore();
+}
+
+function hit(sx,sy){
+  for(let i=sim.nodes.length-1;i>=0;i--){
+    const n=sim.nodes[i],fo=float(n,animT),{x,y}=toScr(n.x+fo.dx,n.y+fo.dy),r=(n.size||14)*cam.scale*1.3;
+    if((sx-x)**2+(sy-y)**2<r*r)return n;
+  }return null;
+}
+
+// ══════════════════════════════════════════════════
+// FILE IMPORT → ODEN
+// ══════════════════════════════════════════════════
+
+let impPendingNodes = [];
+
+// Drag & drop setup
+document.addEventListener('DOMContentLoaded', () => {
+  const drop = document.getElementById('imp-drop');
+  if (!drop) return;
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag-over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('drag-over'));
+  drop.addEventListener('drop', e => {
+    e.preventDefault(); drop.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0]; if (!file) return;
+    processImpFile(file);
+  });
+});
+
+function handleImpFile(ev) {
+  const file = ev.target.files[0]; if (!file) return;
+  processImpFile(file);
+  ev.target.value = '';
+}
+
+function processImpFile(file) {
+  const name = file.name.toLowerCase();
+  setImpStatus('Reading ' + file.name + '...', '');
+  if (name.endsWith('.docx')) {
+    if (typeof mammoth === 'undefined') {
+      setImpStatus('mammoth.js not loaded — check your internet connection and reload.', 'warn'); return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => {
+      mammoth.extractRawText({ arrayBuffer: e.target.result })
+        .then(result => parseImpText(result.value, file.name))
+        .catch(() => setImpStatus('Could not read .docx file.', 'warn'));
+    };
+    reader.readAsArrayBuffer(file);
+  } else if (name.endsWith('.csv')) {
+    const reader = new FileReader();
+    reader.onload = e => parseCsvText(e.target.result, file.name);
+    reader.readAsText(file);
+  } else {
+    // .txt or .md
+    const reader = new FileReader();
+    reader.onload = e => parseImpText(e.target.result, file.name);
+    reader.readAsText(file);
+  }
+}
+
+// ── CSV PARSER ──────────────────────────────────
+function parseCsvText(text, sourceName) {
+  const lines = text.trim().split('\n').map(l => l.replace(/\r/g, ''));
+  if (lines.length < 2) { setImpStatus('CSV appears empty.', 'warn'); return; }
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+  const labelIdx = headers.findIndex(h => ['label','name','title','entity'].includes(h));
+  const typeIdx  = headers.findIndex(h => ['type','kind','category'].includes(h));
+  const descIdx  = headers.findIndex(h => ['description','desc','notes','detail','summary'].includes(h));
+  const nodes = [];
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+    const label = labelIdx >= 0 ? cols[labelIdx] : cols[0];
+    if (!label) continue;
+    const rawType = typeIdx >= 0 ? cols[typeIdx] : '';
+    const type = guessTypeFromString(rawType) || 'actor';
+    const desc = descIdx >= 0 ? cols[descIdx] : '';
+    nodes.push({ label, type, desc, tags: [], sources: [], confidence: 'csv-row' });
+  }
+  showImpPreview(nodes, sourceName, 'CSV rows → one node per row. Assign types below.');
+}
+
+// ── TEXT/MARKDOWN PARSER ──────────────────────────
+function parseImpText(text, sourceName) {
+  if (!text || !text.trim()) { setImpStatus('No text to parse.', 'warn'); return; }
+  setImpStatus('Analyzing...', '');
+  const nodes = [];
+  const seen = new Set();
+
+  function addNode(label, type, desc, confidence) {
+    const key = label.toLowerCase().trim();
+    if (!key || key.length < 2 || seen.has(key)) return;
+    seen.add(key);
+    nodes.push({ label: label.trim(), type, desc: desc || '', tags: [], sources: [], confidence });
+  }
+
+  const lines = text.split('\n');
+
+  // ── PASS 1: Obsidian [[links]] ──
+  const obsRe = /\[\[([^\]]+)\]\]/g;
+  let m;
+  while ((m = obsRe.exec(text)) !== null) {
+    const lbl = m[1].split('|')[0].trim();
+    addNode(lbl, 'actor', '', 'obsidian-link');
+  }
+
+  // ── PASS 2: Markdown headings → nodes with description from following paragraph ──
+  for (let i = 0; i < lines.length; i++) {
+    const hm = lines[i].match(/^#{1,4}\s+(.+)/);
+    if (hm) {
+      const label = hm[1].trim();
+      let desc = '';
+      if (i + 1 < lines.length && !lines[i + 1].match(/^#/)) {
+        desc = lines[i + 1].trim().slice(0, 200);
+      }
+      const type = guessTypeFromString(label);
+      addNode(label, type || 'actor', desc, 'heading');
+    }
+  }
+
+  // ── PASS 3: Dates → event nodes ──
+  const dateRe = /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b|\b\d{4}\b|\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g;
+  const dateSeen = new Set();
+  while ((m = dateRe.exec(text)) !== null) {
+    const d = m[0];
+    if (!dateSeen.has(d) && d.length > 4) {
+      dateSeen.add(d);
+      // Find surrounding context (up to 60 chars before)
+      const ctx = text.slice(Math.max(0, m.index - 60), m.index + d.length + 60).replace(/\n/g, ' ').trim();
+      addNode(d, 'event', ctx.slice(0, 150), 'date');
+    }
+  }
+
+  // ── PASS 4: "Department/Bureau/Agency/Office/Division of X" → institution ──
+  const orgRe = /\b(Department|Bureau|Division|Office|Agency|Service|Administration|Institute|Commission|Authority|Committee|Council)\s+of\s+[A-Z][A-Za-z\s]{2,30}(?=[,.\n]|\b)/g;
+  while ((m = orgRe.exec(text)) !== null) {
+    addNode(m[0].trim(), 'institution', '', 'org-pattern');
+  }
+
+  // ── PASS 5: ALL CAPS words/phrases (2+ chars) not common words → likely institutions/actors ──
+  const capsRe = /\b[A-Z]{2,}(?:\s+[A-Z]{2,})*\b/g;
+  const capsIgnore = new Set(['THE','AND','FOR','BUT','NOT','ARE','WAS','WERE','HAS','HAVE','HAD','FROM','WITH','THIS','THAT','WILL','BEEN','THEY','THEIR','INTO','WHEN','ALSO','DOES','THAN','THEN','THUS','SUCH','SOME','MOST','EACH','OVER','UPON','BOTH','ONLY','EVEN','MADE','MAKE','SAME','MANY','MORE','MUCH','VERY','JUST','ALSO','AFTER','BEFORE','DURING','WHILE','ABOUT','ABOVE','BELOW','UNDER','ALONG','WHICH','OTHER','THERE','THESE','THOSE','WOULD','COULD','SHOULD','WHERE']);
+  while ((m = capsRe.exec(text)) !== null) {
+    const w = m[0];
+    if (!capsIgnore.has(w) && w.length >= 3) {
+      addNode(w, 'institution', '', 'all-caps');
+    }
+  }
+
+  // ── PASS 6: Title Case Proper Names (2+ words) ──
+  const nameRe = /\b[A-Z][a-z]{1,15}(?:\s+[A-Z][a-z]{1,15}){1,3}\b/g;
+  const nameIgnore = new Set(['The','This','That','These','Those','When','Where','Which','Also','After','Before','During','While','About','Above','Below','Under','Along','There','From','With','Into','Upon','Both','Some','Many','More','Most','Each','Such','Only','Even','Then','Just','Very','Much','Over','Than','Does','Made','Make','Same','Will','Been','They','Have','Your','Our','Their','Its','His','Her','His','For','And','But','Not','Are','Was','Were','Has','Had','Who','What','How','May','Can','Should','Would','Could','January','February','March','April','June','July','August','September','October','November','December','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']);
+  while ((m = nameRe.exec(text)) !== null) {
+    const parts = m[0].split(' ');
+    if (parts.every(p => !nameIgnore.has(p))) {
+      const type = guessTypeFromString(m[0]);
+      addNode(m[0], type || 'actor', '', 'title-case');
+    }
+  }
+
+  // ── PASS 7: Repeated significant words (3+ occurrences, length > 4) ──
+  const wordCount = {};
+  const wordRe2 = /\b[A-Za-z]{5,}\b/g;
+  const stopwords = new Set(['about','above','after','again','against','along','also','although','another','around','because','before','being','between','during','either','enough','every','further','having','himself','herself','itself','itself','might','never','other','others','otherwise','perhaps','rather','really','should','since','something','sometimes','still','their','themselves','therefore','through','together','toward','under','until','using','various','whether','which','while','whose','within','without','would','could','should','there','their','these','those','where','there']);
+  while ((m = wordRe2.exec(text)) !== null) {
+    const w = m[0].toLowerCase();
+    if (!stopwords.has(w)) wordCount[w] = (wordCount[w] || 0) + 1;
+  }
+  Object.entries(wordCount).filter(([w, c]) => c >= 3).sort((a, b) => b[1] - a[1]).slice(0, 12).forEach(([w, c]) => {
+    const cap = w.charAt(0).toUpperCase() + w.slice(1);
+    if (!seen.has(w)) {
+      const type = guessTypeFromString(cap);
+      addNode(cap, type || 'actor', `Appears ${c} times`, 'repeated');
+    }
+  });
+
+  if (nodes.length === 0) {
+    setImpStatus('No entities detected. Try a file with headings, proper names, dates, or organization names.', 'warn');
+    return;
+  }
+
+  // Sort: headings and obsidian links first, then dates, then the rest
+  const order = { 'heading': 0, 'obsidian-link': 1, 'csv-row': 2, 'date': 3, 'org-pattern': 4, 'all-caps': 5, 'title-case': 6, 'repeated': 7 };
+  nodes.sort((a, b) => (order[a.confidence] ?? 9) - (order[b.confidence] ?? 9));
+
+  showImpPreview(nodes.slice(0, 80), sourceName, `Extracted from ${sourceName}. Uncheck anything you don't want. Change types as needed.`);
+}
+
+// ── TYPE GUESSER ──────────────────────────────────
+function guessTypeFromString(s) {
+  if (!s) return null;
+  const l = s.toLowerCase();
+
+  // ORGANIZATION
+  if (/department|bureau|division|office|agency|service|administration|institute|commission|authority|committee|council|government|federal|national|forest service|park service|corporation|company|inc\b|llc\b|ltd\b|firm|foundation|association|society|union|alliance|coalition|board|ministry|diocese|parish|church|court|tribunal|precinct|police|sheriff|fbi|cia|nsa|doj|epa|fda|cdc|nhs|hospital|university|college|school|academy|museum|library|archive|nara|usda|usgs/.test(l)) return 'institution';
+
+  // DOCUMENT / RECORD
+  if (/\b(letter|memo|memorandum|report|filing|file|record|document|deed|will|testament|warrant|affidavit|deposition|transcript|certificate|birth certificate|death certificate|marriage certificate|patent|permit|license|contract|agreement|treaty|order|directive|dispatch|telegram|cable|index|inventory|ledger|register|log|journal|diary|manuscript|draft|copy|exhibit|form|application|petition|motion|brief|ruling|opinion|decision|decree|charter|statute|bill|act|regulation|code|policy|protocol|autopsy|coroner|probate|dossier|case file)\b/.test(l)) return 'document';
+
+  // GAP / UNKNOWN
+  if (/missing|gap|absent|unverifiable|no record|undocumented|lost|destroyed|unknown|withheld|redacted|classified|sealed|expunged|unavailable|not found|unaccounted|discrepancy|anomaly/.test(l)) return 'gap';
+
+  // FINANCIAL / TRANSACTION
+  if (/\b(payment|transaction|transfer|deposit|withdrawal|wire|fund|grant|loan|debt|invoice|receipt|account|balance|budget|expenditure|revenue|profit|loss|investment|stock|share|bond|asset|property|estate|trust|inheritance|bribe|kickback|money|cash|check|cheque|bank|treasury|ledger|audit|tax|tariff|fee|salary|wage|compensation|donation|endowment|subsidy)\b/.test(l)) return 'financial';
+
+  // WITNESS / SOURCE
+  if (/\b(witness|informant|source|tipster|whistleblower|testimony|statement|account|declaration|affiant|deponent|contact|confidential|anonymous|unnamed source|insider|leaker|correspondent|interviewee|respondent|subject|claimant|appellant|plaintiff|complainant)\b/.test(l)) return 'witness';
+
+  // UNKNOWN / SUSPECT
+  if (/\b(suspect|perpetrator|unknown subject|unsub|unidentified|john doe|jane doe|person of interest|alleged|accused|defendant|fugitive|wanted|criminal|offender|assailant|attacker|killer|murderer|shooter|bomber|arsonist|thief|fraudster|con artist)\b/.test(l)) return 'suspect';
+
+  // LEGISLATION / LAW
+  if (/\b(act\b|law|bill|statute|regulation|ordinance|amendment|clause|section|code|constitution|treaty|executive order|directive|mandate|rule|bylaw|resolution|decree|proclamation|policy|legislation|legal|illegal|unlawful|criminal code|penal|civil code|jurisdiction|precedent|case law)\b/.test(l)) return 'law';
+
+  // SCIENTIFIC FINDING
+  if (/\b(study|research|findings|conclusion|hypothesis|experiment|trial|test|analysis|data|result|evidence|proof|specimen|sample|observation|measurement|survey|census|assessment|evaluation|peer.?review|publication|paper|journal article|methodology|protocol|clinical|laboratory|field study|excavation|dig)\b/.test(l)) return 'science';
+
+  // FAMILY / LINEAGE
+  if (/\b(family|father|mother|son|daughter|brother|sister|husband|wife|spouse|parent|child|children|sibling|ancestor|descendant|grandparent|grandfather|grandmother|grandchild|cousin|uncle|aunt|nephew|niece|relative|heir|bloodline|lineage|genealogy|birth|baptism|christening|adoption|marriage|divorce|widow|widower|estate|inheritance|surname|maiden name)\b/.test(l)) return 'family';
+
+  // NETWORK / GROUP
+  if (/\b(network|group|ring|circle|cell|faction|clique|cabal|cartel|gang|syndicate|mob|crew|team|committee|club|society|fraternity|sorority|brotherhood|sisterhood|lodge|chapter|order|sect|cult|movement|coalition|front|party|bloc|caucus|forum|community|online group|social network|dark web|channel|forum|chat)\b/.test(l)) return 'network';
+
+  // RELATIONSHIP / CONNECTION
+  if (/\b(relationship|connection|link|tie|bond|association|partnership|alliance|affiliation|collaboration|coordination|agreement|arrangement|deal|pact|contract|correspondence|communication|meeting|contact|interaction|involvement|overlap|intersection|shared|mutual|joint|common|connected|affiliated|associated)\b/.test(l)) return 'relation';
+
+  // EVENT (expanded)
+  if (/\b(january|february|march|april|may|june|july|august|september|october|november|december)\b|\b\d{4}\b|conference|expedition|discovery|event|incident|survey|trial|hearing|inquest|inquiry|investigation|arrest|murder|death|birth|marriage|divorce|battle|war|election|vote|referendum|protest|riot|strike|fire|flood|earthquake|disaster|accident|crash|explosion|attack|assassination|execution|sentencing|verdict|acquittal|conviction|settlement|signing|ceremony|meeting|session|summit|launch|opening|closing|burial|funeral|exhumation/.test(l)) return 'event';
+
+  // LOCATION
+  if (/canyon|river|mountain|lake|valley|forest|park|city|territory|state|region|site|cave|area|location|place|mine|ruins|plateau|street|avenue|road|highway|county|township|district|neighborhood|borough|village|town|island|coast|shore|beach|bay|harbor|port|bridge|building|house|estate|ranch|farm|cemetery|grave|burial site|coordinates|address/.test(l)) return 'location';
+
+  // MEDIA
+  if (/gazette|journal|herald|times|press|newspaper|magazine|article|report|news|media|broadcast|telegraph|wire|radio|television|\btv\b|podcast|blog|website|post|publication|publisher|editor|reporter|correspondent|headline|column|editorial|interview|documentary|film|book|pamphlet/.test(l)) return 'media';
+
+  // CONCEPT / THEORY
+  if (/theory|concept|hypothesis|ideology|doctrine|belief|principle|framework|model|paradigm|narrative|myth|legend|folklore|conspiracy|cover.?up|propaganda|disinformation|manifesto|movement|syndrome|condition|diagnosis/.test(l)) return 'concept';
+
+  // OBJECT / ARTIFACT
+  if (/artifact|relic|specimen|sample|object|item|tool|weapon|gun|knife|bullet|vehicle|car|truck|boat|ship|aircraft|map|photograph|photo|image|painting|drawing|blueprint|seal|stamp|coin|currency|jewelry|clothing|body|remains|bone|skeleton|fossil|rock|mineral|chemical|drug|medicine|vial|container|fingerprint|dna|hair|fiber/.test(l)) return 'object';
+
+  // PERIOD / SPAN
+  if (/\b(era|period|phase|span|interval|window|decade|century|century|age|epoch|reign|administration|term|tenure|session|chapter|stage|generation|quarter|semester|fiscal year|blackout period|gap period|between|from \d{4}|through \d{4}|\d{4}s\b)\b/.test(l)) return 'period';
+
+  // ALIAS / IDENTITY
+  if (/\b(alias|pseudonym|aka\b|also known|pen name|stage name|username|handle|screen name|nom de plume|nom de guerre|cover name|codename|false identity|fake id|assumed name|fictitious|goes by|known as|moniker|nickname|alter ego|sockpuppet|burner|anonymous account)\b/.test(l)) return 'alias';
+
+  // RUMOR / CLAIM
+  if (/\b(rumor|rumour|claim|allegation|assertion|accusation|hearsay|unverified|alleged|reportedly|supposedly|purportedly|said to|believed to|thought to|claimed|reported|according to|sources say|anonymous tip|speculation|conjecture|legend|folklore claim|eyewitness claim|testimony claims|disputed|contested|unconfirmed)\b/.test(l)) return 'rumor';
+
+  // PATTERN / BEHAVIOR
+  if (/\b(pattern|behavior|behaviour|practice|habit|tendency|recurring|repeated|systematic|consistent|routine|modus operandi|m\.o\.|method|approach|strategy|tactic|signature|trademark|hallmark|characteristic|trend|anomaly|irregularity|deviation|suppression|obstruction|destruction|denial|refusal|delay|redaction pattern)\b/.test(l)) return 'pattern';
+
+  return null;
+}
+
+// ── PREVIEW RENDERER ──────────────────────────────
+function showImpPreview(nodes, sourceName, subtitle) {
+  impPendingNodes = nodes;
+  const preview = document.getElementById('imp-preview');
+  const sub = document.getElementById('imp-preview-sub');
+  const list = document.getElementById('imp-node-list');
+  sub.textContent = subtitle;
+  preview.style.display = 'block';
+
+  const confidenceLabel = { 'heading': 'heading', 'obsidian-link': '[[link]]', 'date': 'date', 'org-pattern': 'org name', 'all-caps': 'ALL CAPS', 'title-case': 'proper name', 'repeated': 'repeated', 'csv-row': 'csv row' };
+
+  list.innerHTML = nodes.map((n, i) => `
+    <div class="imp-node-preview">
+      <input type="checkbox" id="imp-chk-${i}" checked style="accent-color:var(--accent);flex-shrink:0">
+      <div class="ind" id="imp-dot-${i}" style="background:${TC[n.type] || '#888'}"></div>
+      <div class="inl">
+        <div style="color:var(--text)">${n.label}</div>
+        ${n.desc ? `<div style="font-size:10px;color:var(--muted);margin-top:2px">${n.desc.slice(0, 80)}${n.desc.length > 80 ? '…' : ''}</div>` : ''}
+      </div>
+      <div class="int">${confidenceLabel[n.confidence] || n.confidence}</div>
+      <select onchange="impChangeType(${i}, this.value)">
+        <option value="actor" ${n.type==='actor'?'selected':''}>Person / Actor</option>
+        <option value="institution" ${n.type==='institution'?'selected':''}>Organization</option>
+        <option value="gap" ${n.type==='gap'?'selected':''}>Gap / Unknown</option>
+        <option value="location" ${n.type==='location'?'selected':''}>Location</option>
+        <option value="event" ${n.type==='event'?'selected':''}>Event</option>
+        <option value="media" ${n.type==='media'?'selected':''}>Media</option>
+        <option value="document" ${n.type==='document'?'selected':''}>Document / Record</option>
+        <option value="concept" ${n.type==='concept'?'selected':''}>Concept / Theory</option>
+        <option value="object" ${n.type==='object'?'selected':''}>Object / Artifact</option>
+        <option value="relation" ${n.type==='relation'?'selected':''}>Relationship / Connection</option>
+        <option value="financial" ${n.type==='financial'?'selected':''}>Financial / Transaction</option>
+        <option value="witness" ${n.type==='witness'?'selected':''}>Witness / Source</option>
+        <option value="suspect" ${n.type==='suspect'?'selected':''}>Unknown / Suspect</option>
+        <option value="law" ${n.type==='law'?'selected':''}>Legislation / Law</option>
+        <option value="science" ${n.type==='science'?'selected':''}>Scientific Finding</option>
+        <option value="family" ${n.type==='family'?'selected':''}>Family / Lineage</option>
+        <option value="network" ${n.type==='network'?'selected':''}>Network / Group</option>
+        <option value="period" ${n.type==='period'?'selected':''}>Period / Span</option>
+        <option value="alias" ${n.type==='alias'?'selected':''}>Alias / Identity</option>
+        <option value="rumor" ${n.type==='rumor'?'selected':''}>Rumor / Claim</option>
+        <option value="pattern" ${n.type==='pattern'?'selected':''}>Pattern / Behavior</option>
+      </select>
+    </div>`).join('');
+
+  setImpStatus(`${nodes.length} entities extracted. Check the ones you want to add, adjust types, then click ADD.`, 'ok');
+  preview.scrollIntoView({ behavior: 'smooth' });
+}
+
+function impChangeType(i, type) {
+  impPendingNodes[i].type = type;
+  const dot = document.getElementById('imp-dot-' + i);
+  if (dot) dot.style.background = TC[type] || '#888';
+}
+
+function commitImpNodes() {
+  const checked = impPendingNodes.filter((_, i) => {
+    const chk = document.getElementById('imp-chk-' + i);
+    return chk && chk.checked;
+  });
+  if (!checked.length) { setImpStatus('No nodes selected.', 'warn'); return; }
+  let added = 0;
+  checked.forEach(n => {
+    const existing = S.nodes.find(x => x.label.toLowerCase() === n.label.toLowerCase());
+    if (existing) return; // skip duplicates
+    const angle = Math.random() * Math.PI * 2, dist = 200 + Math.random() * 400;
+    S.nodes.push({
+      id: 'n' + gid(), label: n.label, type: n.type,
+      desc: n.desc || '', tags: [], sources: [], section: '',
+      x: Math.cos(angle) * dist, y: Math.sin(angle) * dist,
+      size: 14, vx: 0, vy: 0
+    });
+    added++;
+  });
+  save(); runSim(400); updateStats(); renderNList(); updateNSelects(); updateSecSel();
+  setImpStatus(`${added} node${added !== 1 ? 's' : ''} added to ODEN. ${checked.length - added > 0 ? (checked.length - added) + ' duplicate(s) skipped.' : ''}`, 'ok');
+  clearImpPreview();
+  if (added > 0) setTimeout(() => sw('nodes'), 1200);
+}
+
+function clearImpPreview() {
+  impPendingNodes = [];
+  document.getElementById('imp-preview').style.display = 'none';
+  document.getElementById('imp-node-list').innerHTML = '';
+  setImpStatus('', '');
+}
+
+function setImpStatus(text, cls) {
+  const el = document.getElementById('imp-status');
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'imp-status' + (cls ? ' ' + cls : '');
+}
+
+document.getElementById('case-name').addEventListener('input',save);
+
+function updateBackupReminder(){
+  const el=document.getElementById('backup-reminder');
+  if(!el)return;
+  const last=parseInt(localStorage.getItem('oden_last_export')||'0');
+  const now=Date.now();
+  const days=Math.floor((now-last)/(1000*60*60*24));
+  if(!last){
+    el.style.display='inline';
+    el.style.color='#c07070';
+    el.textContent='⚠ no backup saved';
+  } else if(days>=3){
+    el.style.display='inline';
+    el.style.color=days>=7?'#c07070':'var(--accent)';
+    el.textContent=`⚠ backup ${days}d old`;
+  } else {
+    el.style.display='none';
+  }
+}
+
+// Force layout height on Android/local file where 100vh fails
+function enforceLayout(){
+  const h=window.innerHeight;
+  document.body.style.height=h+'px';
+}
+enforceLayout();
+window.addEventListener('resize',enforceLayout);
+
+document.addEventListener('DOMContentLoaded',()=>{
+  try {
+    resizeCv();load();startAnim();
+    // Android local files settle layout slowly — fire resize at intervals
+    setTimeout(resizeCv, 100);
+    setTimeout(resizeCv, 300);
+    setTimeout(resizeCv, 800);
+    sw('map');
+    BP.forEach(f=>{const e=document.getElementById('bp-'+f);if(e)e.addEventListener('input',()=>{save();updatePhaseStatus();});});
+    updatePhaseStatus();
+    updateBackupReminder();
+    const ctxBody=document.getElementById('ctx-body');
+    if(ctxBody)ctxBody.addEventListener('input',saveBody);
+  } catch(e){ console.error('ODEN init error:',e); }
+});
+
+// ── canvas setup (inside DOMContentLoaded so desktop file:// is happy) ──
+window.addEventListener('DOMContentLoaded',()=>{
+  const canvas=document.getElementById('map-canvas');
+  if(!canvas)return;
+  const ctx2d=canvas.getContext('2d');
+
+  // expose to outer scope functions that need them
+  window._odenCanvas=canvas;
+  window._odenCtx=ctx2d;
+
+  canvas.addEventListener('mousedown',e=>{
+    const r=canvas.getBoundingClientRect(),sx=e.clientX-r.left,sy=e.clientY-r.top,h=hit(sx,sy);
+    if(h){dragging=h;dragging._ps={sx,sy,nx:h.x,ny:h.y};}else panning={sx,sy,cx:cam.x,cy:cam.y};
+  });
+  canvas.addEventListener('mousemove',e=>{
+    const r=canvas.getBoundingClientRect(),sx=e.clientX-r.left,sy=e.clientY-r.top;
+    if(dragging){dragging.x=dragging._ps.nx+(sx-dragging._ps.sx)/cam.scale;dragging.y=dragging._ps.ny+(sy-dragging._ps.sy)/cam.scale;dragging.vx=0;dragging.vy=0;const sn=S.nodes.find(n=>n.id===dragging.id);if(sn){sn.x=dragging.x;sn.y=dragging.y;}}
+    else if(panning){cam.x=panning.cx+(sx-panning.sx);cam.y=panning.cy+(sy-panning.sy);}
+    else{hovNode=hit(sx,sy);canvas.style.cursor=hovNode?'pointer':'default';}
+  });
+  canvas.addEventListener('mouseup',e=>{
+    const r=canvas.getBoundingClientRect(),sx=e.clientX-r.left,sy=e.clientY-r.top;
+    if(dragging){const moved=Math.abs(sx-dragging._ps.sx)+Math.abs(sy-dragging._ps.sy)<5;if(moved){if(selectedNId===dragging.id)closeNP();else openNP(dragging.id);}save();}
+    dragging=null;panning=null;
+  });
+  canvas.addEventListener('wheel',e=>{
+    e.preventDefault();const r=canvas.getBoundingClientRect(),sx=e.clientX-r.left,sy=e.clientY-r.top;
+    const d=e.deltaY>0?.9:1.1,ns=Math.max(.1,Math.min(4,cam.scale*d));
+    cam.x=sx-(sx-cam.x)*(ns/cam.scale);cam.y=sy-(sy-cam.y)*(ns/cam.scale);cam.scale=ns;
+  },{passive:false});
+  let lTouch=null;
+  canvas.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0],r=canvas.getBoundingClientRect(),sx=t.clientX-r.left,sy=t.clientY-r.top,h=hit(sx,sy);if(h){dragging=h;dragging._ps={sx,sy,nx:h.x,ny:h.y};}else panning={sx,sy,cx:cam.x,cy:cam.y};lTouch={sx,sy,time:Date.now()};},{passive:false});
+  canvas.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0],r=canvas.getBoundingClientRect(),sx=t.clientX-r.left,sy=t.clientY-r.top;if(dragging){dragging.x=dragging._ps.nx+(sx-dragging._ps.sx)/cam.scale;dragging.y=dragging._ps.ny+(sy-dragging._ps.sy)/cam.scale;dragging.vx=0;dragging.vy=0;const sn=S.nodes.find(n=>n.id===dragging.id);if(sn){sn.x=dragging.x;sn.y=dragging.y;}}else if(panning){cam.x=panning.cx+(sx-panning.sx);cam.y=panning.cy+(sy-panning.sy);}},{passive:false});
+  canvas.addEventListener('touchend',e=>{if(dragging&&lTouch&&Date.now()-lTouch.time<300){if(selectedNId===dragging.id)closeNP();else openNP(dragging.id);save();}dragging=null;panning=null;});
+});
+
+function previewDocImage(ev){
+  var file=ev.target.files[0];if(!file)return;
+  if(file.size>5*1024*1024){alert('Image over 5MB.');ev.target.value='';return;}
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var p=document.getElementById('doc-img-preview');
+    var pr=document.getElementById('doc-img-prompt');
+    var cb=document.getElementById('doc-img-clear');
+    if(p){p.src=e.target.result;p.style.display='block';}
+    if(pr)pr.style.display='none';
+    if(cb)cb.style.display='inline';
+  };
+  reader.readAsDataURL(file);
+}
+function clearDocImage(){
+  var p=document.getElementById('doc-img-preview');
+  var pr=document.getElementById('doc-img-prompt');
+  var cb=document.getElementById('doc-img-clear');
+  var inp=document.getElementById('doc-img-input');
+  if(p){p.src='';p.style.display='none';}
+  if(pr)pr.style.display='block';
+  if(cb)cb.style.display='none';
+  if(inp)inp.value='';
+}
+function viewDocImage(id){
+  var d=S.documents.find(function(x){return x.id===id;});if(!d||!d.imageData)return;
+  var w=window.open('','_blank');if(!w)return;
+  w.document.write('<!DOCTYPE html><html><head><title>'+d.title+'</title><style>body{margin:0;background:#080808;display:flex;align-items:center;justify-content:center;min-height:100vh;}img{max-width:100%;max-height:100vh;}</style></head><body><img src="'+d.imageData+'"></body></html>');
+  w.document.close();
+}
+</script>
+</body>
+</html>
